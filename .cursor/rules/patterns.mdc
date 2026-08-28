@@ -1,0 +1,14 @@
+---
+description: Cross-cutting patterns for routing, runtime and dates
+alwaysApply: true
+---
+
+# Patterns
+
+- Filters, sorting and pagination live in URL search params, never in React state.
+- Every DB-touching route needs the Node runtime, not Edge.
+  Set `export const runtime = 'nodejs'` on layouts/pages that talk to Prisma.
+- Dates: store `Task.dueDate` as a calendar date at UTC midnight; store
+  `Activity.occurredAt` as a true instant. Never conflate them.
+- A sequence is a template, not a schedule. Only the NEXT task is ever materialised
+  (see SPEC.md §0). Never materialise a full sequence up front.

@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solo CRM — Wireframes v3</title>
+<style>
+  :root {
+    /* ---- brand / interaction ----
+       Azurite: a deep, saturated cobalt with a slight violet lean. Reads as a brand
+       colour rather than a status colour, which is what keeps it out of "medical" territory —
+       clinical UIs use desaturated cyan-teals, not saturated cobalt. ---- */
+    --accent:      #2F4BD9;
+    --accent-hi:   #6B82F0;   /* edge markers, hover */
+    --accent-soft: #EEF1FE;   /* tinted surfaces, selected rows */
+    --accent-line: #C4CEF8;
+    /* ---- outcome semantics: both far from the accent in hue, so nothing competes ---- */
+    --good:        #0E8A54;   /* emerald — done, booked */
+    --good-soft:   #E6F5ED;
+    --bad:         #CC372D;   /* vermilion — overdue, dead */
+    --bad-soft:    #FCECEA;
+    /* ---- surfaces: neutral-cool greys, deliberately NOT steel/slate blue ---- */
+    --rail:        #161D2E;   /* ink navy — a dark relative of the accent, not black */
+    --rail-dim:    rgba(255,255,255,.55);
+    --line:        #DFE2E7;
+    --line-soft:   #EFF1F4;
+    --ink:         #1A1F28;
+    --dim:         #6B7280;
+    --surface:     #FAFBFC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    margin: 0; background: #E8EAEE; color: var(--ink);
+  }
+  .page { max-width: 1260px; margin: 0 auto; padding: 0 16px 60px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .muted { color: var(--dim); }
+  .tiny { font-size: 11px; }
+  .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  .ic.s { width: 14px; height: 14px; stroke-width: 1.9; }
+
+  /* ---------- wireframe navigator (not part of the app) ---------- */
+  .navigator { background: #fff; border-bottom: 1px solid #D8DCE2; position: sticky; top: 0; z-index: 40; }
+  .navigator .inner { max-width: 1260px; margin: 0 auto; padding: 9px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .navigator .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs button { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #F3F4F7; padding: 5px 11px; cursor: pointer; border-radius: 4px; color: var(--ink); }
+  nav.tabs button[aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .screen-note { background: #FFFBEA; border: 1px solid #DFCB86; padding: 9px 12px; margin: 16px 0; font-size: 12px; border-radius: 4px; }
+
+  /* ---------- app shell ---------- */
+  .frame { display: flex; background: #fff; border: 1px solid #D2D6DC; min-height: 640px; border-radius: 5px; overflow: hidden; }
+  .rail { width: 60px; background: var(--rail); flex: 0 0 60px; display: flex; flex-direction: column; align-items: center; padding: 14px 0 12px; gap: 4px; }
+  .rail .wordmark {
+    color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .16em;
+    margin-bottom: 16px; user-select: none;
+  }
+  .rail a {
+    position: relative; width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--rail-dim); text-decoration: none;
+  }
+  .rail a.on { background: var(--accent); color: #fff; }
+  .rail a.on::before { content: ""; position: absolute; left: -10px; top: 10px; bottom: 10px; width: 3px; background: var(--accent-hi); border-radius: 0 2px 2px 0; }
+  .rail .spacer { flex: 1; }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ---------- bar 1: title + search ---------- */
+  .bar1 { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .bar1 h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
+  .search { flex: 0 1 400px; margin: 0 auto; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; color: var(--dim); font-size: 12px; display: flex; align-items: center; gap: 8px; background: var(--surface); }
+
+  /* ---------- bar 2: actions ---------- */
+  .bar2 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #fff; padding: 5px 11px; font-size: 12px; border-radius: 5px; white-space: nowrap; cursor: default; color: var(--ink); }
+  .btn.sm { padding: 3px 9px; font-size: 11px; }
+  .btn.acc { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .count { font-size: 12px; color: var(--dim); }
+
+  /* ---------- bar 3: type chips + time tabs ---------- */
+  .bar3 { display: flex; align-items: center; gap: 5px; padding: 8px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .tchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 5px; font-size: 12px; color: var(--dim); border: 1px solid transparent; background: var(--surface); }
+  .tchip.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); font-weight: 600; }
+  .tchip .n { font-size: 10px; background: rgba(0,0,0,.06); border-radius: 8px; padding: 0 5px; }
+  .tchip.on .n { background: rgba(47,75,217,.13); }
+  .vsep { width: 1px; height: 20px; background: var(--line); margin: 0 7px; }
+  .ttabs { margin-left: auto; display: flex; gap: 2px; flex-wrap: wrap; }
+  .ttab { padding: 4px 10px; font-size: 12px; border-radius: 5px; color: var(--dim); }
+  .ttab.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .ttab .n { font-size: 10px; opacity: .85; }
+  .ttab.od { color: var(--bad); }
+
+  /* ---------- activity table ---------- */
+  table.act { width: 100%; border-collapse: collapse; }
+  table.act th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim);
+    font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap;
+  }
+  table.act td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; font-size: 12.5px; }
+  table.act tr.sel td { background: #F4F6FE; }
+  table.act tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  table.act tr.done td { color: #98A0AC; text-decoration: line-through; }
+  table.act tr.done td .chk, table.act tr.done td .ti { text-decoration: none; }
+  .chk { width: 18px; height: 18px; border: 1.5px solid #BFC5CE; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: transparent; }
+  .chk.ok { background: var(--good); border-color: var(--good); color: #fff; }
+  .chk.due { border-color: var(--accent); color: var(--accent); }
+  .subj { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .ti { width: 22px; height: 22px; border-radius: 5px; background: #EEF0F4; color: var(--dim); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ti.call { background: var(--accent-soft); color: var(--accent); }
+  .ti.mail { background: var(--good-soft); color: var(--good); }
+  .ti.reply { background: #FCF0DF; color: #9A6412; }
+  .ti.li { background: #E9ECFB; color: #3B4890; font-size: 10px; font-weight: 700; }
+  .tagpill { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 1px 7px; font-size: 11px; background: var(--surface); }
+  .tagpill.acc { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+  .rowacts { display: flex; gap: 4px; justify-content: flex-end; }
+  .overdue-tag { color: var(--bad); font-size: 11px; font-weight: 600; }
+  table.act tbody tr:hover td { background: #FBFCFE; }
+  table.act tbody tr.sel:hover td { background: #F4F6FE; }
+  table.act tbody tr.done:hover td { background: transparent; }
+  .trunc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sortable { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
+
+  /* selection checkbox — square, distinct from the round activity tick */
+  .cb { width: 15px; height: 15px; border: 1.5px solid #BFC5CE; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: transparent; background: #fff; }
+  .cb.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cb.mix { background: var(--accent); border-color: var(--accent); }
+  .cb.mix::after { content: ""; width: 7px; height: 2px; background: #fff; border-radius: 1px; }
+
+  /* filter dropdowns — applied filters carry the accent, idle ones stay quiet */
+  .fdrop { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--ink); }
+  .fdrop .k { color: var(--dim); }
+  .fdrop.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .fdrop.on .k { color: var(--accent); opacity: .7; font-weight: 400; }
+  .linkbtn { font-size: 12px; color: var(--accent); font-weight: 600; padding: 5px 4px; }
+
+  .tfootbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface); font-size: 12px; color: var(--dim); flex-wrap: wrap; gap: 10px; }
+  .pager { display: flex; gap: 4px; }
+  .pg { min-width: 27px; height: 27px; padding: 0 7px; border: 1px solid var(--line); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; background: #fff; font-size: 12px; color: var(--ink); }
+  .pg.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .pg.off { color: #BFC5CE; }
+
+  /* ---------- outcome popover ---------- */
+  /* Anchored under the row it belongs to — never on top of it, so the prospect
+     you're logging against stays readable while you pick the outcome. */
+  .pop-wrap { position: relative; }
+  .pop { position: absolute; z-index: 5; top: calc(100% + 7px); left: 4px; width: 302px; background: #fff; border: 1px solid #D2D6DC; border-radius: 7px; box-shadow: 0 10px 28px rgba(18,26,46,.20); padding: 10px; }
+  .pop::before { content: ""; position: absolute; top: -6px; left: 15px; width: 10px; height: 10px; background: #fff; border-left: 1px solid #D2D6DC; border-top: 1px solid #D2D6DC; transform: rotate(45deg); }
+  .pop .hd { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); margin-bottom: 8px; font-weight: 600; }
+  .pop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .oc { border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center; gap: 5px; background: var(--surface); }
+  .oc.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .kbd { display: inline-block; border: 1px solid #D2D6DC; border-bottom-width: 2px; background: #fff; padding: 0 4px; font-size: 10px; font-family: ui-monospace, monospace; border-radius: 3px; color: var(--ink); }
+  .oc.on .kbd { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.45); color: #fff; }
+
+  /* ---------- generic ---------- */
+  .body-pad { padding: 16px; }
+  .sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); margin: 0 0 8px; }
+  .field { border: 1px solid var(--line); background: #fff; padding: 4px 8px; font-size: 12px; display: inline-block; min-width: 90px; color: var(--dim); border-radius: 5px; }
+  .pill { display: inline-block; border: 1px solid var(--line); border-radius: 11px; padding: 1px 9px; font-size: 11px; background: var(--surface); }
+  .pill.good { background: var(--good-soft); border-color: #A6D6BD; color: #0A6640; }
+  .pill.bad { background: var(--bad-soft); border-color: #E6B1AC; color: #96271E; }
+  .pill.acc { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+  .pill.st { font-size: 10.5px; font-weight: 600; letter-spacing: .3px; padding: 2px 9px; }
+  .ph { background: #E4E7EC; display: inline-block; height: 10px; border-radius: 2px; vertical-align: middle; }
+  .dash { border: 1px dashed #C2C8D1; border-radius: 5px; }
+  /* ---------- prospect page: left detail column + timeline ---------- */
+  .pcols { display: grid; grid-template-columns: 306px 1fr; align-items: start; }
+  .pcols > .side { padding: 14px; border-right: 1px solid var(--line-soft); }
+  .pcols > .feed { padding: 14px 16px; background: var(--surface); min-height: 520px; }
+
+  .panel { border: 1px solid var(--line); border-radius: 6px; background: #fff; margin-bottom: 11px; overflow: hidden; }
+  .panel-hd { padding: 8px 11px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); }
+  .panel-bd { padding: 10px 11px; font-size: 12px; }
+  .kv { display: grid; grid-template-columns: 82px 1fr; gap: 6px 8px; font-size: 12px; align-items: center; }
+  .kv .k { color: var(--dim); }
+
+  /* Focus block — the one open task, in the app's own panel language */
+  .focus { border: 1px solid var(--accent-line); border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .focus-hd { background: var(--accent-soft); color: var(--accent); padding: 7px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .focus-bd { background: #fff; padding: 13px; border-top: 1px solid var(--accent-line); }
+
+  /* Event stream — hairline rows, no cards, matching the activity table */
+  .ev { display: grid; grid-template-columns: 22px 1fr auto; gap: 11px; padding: 12px 13px; border-bottom: 1px solid var(--line-soft); align-items: start; }
+  .ev:last-child { border-bottom: none; }
+  .ev-t { font-weight: 600; font-size: 13px; }
+  .ev-t .out { font-weight: 400; color: var(--dim); }
+  .ev-m { font-size: 11.5px; color: var(--dim); margin-top: 3px; display: flex; gap: 13px; flex-wrap: wrap; }
+  .ev-m span { display: inline-flex; align-items: center; gap: 5px; }
+  .ev-n { margin-top: 8px; padding: 8px 11px; background: var(--surface); border-left: 2px solid var(--accent-line); border-radius: 0 4px 4px 0; font-size: 12.5px; }
+  .ev-n .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); font-weight: 700; display: block; margin-bottom: 2px; }
+  .ev-w { font-size: 11.5px; color: var(--dim); white-space: nowrap; text-align: right; }
+  .ghost { color: #AFB6C0; }
+
+  .tl { list-style: none; margin: 0; padding: 0; }
+  .tl li { display: grid; grid-template-columns: 84px 24px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-soft); align-items: start; }
+  table.wt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.wt th { text-align: left; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 7px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); }
+  table.wt td { padding: 7px 10px; border-bottom: 1px solid var(--line-soft); }
+  table.wt td.num, table.wt th.num { text-align: right; font-family: ui-monospace, monospace; }
+  .grip { cursor: grab; color: #AFB6C0; letter-spacing: 2px; }
+
+  /* ---------- sequence editor (production) ---------- */
+  .seq-layout { display: grid; grid-template-columns: 1fr 308px; align-items: start; }
+  .seq-main { padding: 16px; min-width: 0; }
+  .seq-side { padding: 16px 16px 16px 0; }
+
+  .srow { display: grid; grid-template-columns: 20px 26px 128px 1fr 128px 112px 24px; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-bottom: 8px; }
+  .srow:hover { border-color: #C2C8D1; box-shadow: 0 1px 3px rgba(16,23,42,.07); }
+  .srow.open { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .snum { width: 24px; height: 24px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--dim); font-family: ui-monospace, monospace; }
+  .ctl { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; background: #fff; min-width: 0; }
+  .ctl .cv { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ctl .cc { margin-left: auto; color: var(--dim); flex-shrink: 0; }
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; }
+  .stepper .b { width: 24px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--dim); background: var(--surface); font-size: 13px; }
+  .stepper .v { padding: 0 8px; font-size: 12px; min-width: 74px; text-align: center; }
+  .sstat { font-size: 11px; color: var(--dim); margin-top: 3px; }
+  .sstat b { color: var(--ink); font-weight: 600; }
+  .tplbox { grid-column: 1 / -1; border-top: 1px solid var(--line-soft); margin-top: 11px; padding-top: 13px; }
+  .mtag { display: inline-block; border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: ui-monospace, monospace; }
+  .addstep { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border: 1px dashed #C2C8D1; border-radius: 8px; color: var(--dim); font-size: 12.5px; background: var(--surface); }
+
+  .prev { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+  .prev-hd { padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); }
+  .prev-ctl { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); }
+  .prow { display: grid; grid-template-columns: 60px 22px 1fr auto; gap: 9px; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); align-items: center; font-size: 12px; }
+  .pdate { font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .pdelay { font-size: 10.5px; color: var(--dim); }
+  .wknd { padding: 4px 12px; background: repeating-linear-gradient(135deg, #F6F7FA, #F6F7FA 5px, #FFF 5px, #FFF 10px); font-size: 10.5px; color: var(--dim); border-bottom: 1px solid var(--line-soft); text-align: center; letter-spacing: .4px; }
+  .prev-ft { padding: 9px 12px; background: var(--surface); font-size: 11.5px; color: var(--dim); }
+
+  /* Column headers: the cheapest fix for "what does this control do?" */
+  .srow-hd { display: grid; grid-template-columns: 20px 26px 128px 1fr 128px 112px 24px; gap: 10px; padding: 0 12px 7px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); }
+  .srow-hd .hint { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10.5px; color: #98A0AC; margin-top: 1px; }
+
+  .btn.quiet { border-style: dashed; color: var(--dim); }
+  .btn.hastpl { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); font-weight: 600; }
+
+  /* Scroll container so the save bar genuinely pins to the bottom of the view */
+  .frame.scrolls { height: 760px; }
+  .frame.scrolls .main { overflow-y: auto; }
+  /* ---------- stats (production) ---------- */
+  .stats-body { background: #F5F6F9; padding: 15px; display: flex; flex-direction: column; gap: 14px; }
+  .sgrid { display: grid; gap: 14px; }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g2a { grid-template-columns: 1.9fr 1fr; }
+  .g2b { grid-template-columns: 1fr 1fr; }
+  .scard { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; box-shadow: 0 1px 2px rgba(16,23,42,.04); }
+  .scard-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+  .scard-hd h3 { margin: 0; font-size: 13.5px; font-weight: 700; }
+  .scard-hd .sub2 { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .kval { font-size: 27px; font-weight: 700; letter-spacing: -.6px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .klab { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); font-weight: 600; }
+  .delta { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .delta.up { background: var(--good-soft); color: #0A6640; }
+  .delta.dn { background: var(--bad-soft); color: #96271E; }
+  .legend2 { display: flex; gap: 15px; font-size: 11.5px; color: var(--dim); flex-wrap: wrap; }
+  .legend2 i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: 0; }
+  .rank { display: grid; grid-template-columns: 20px 1fr 46px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+  .rank:last-child { border-bottom: none; }
+  .rank .rn { width: 20px; height: 20px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: var(--dim); }
+  .rbar { height: 6px; border-radius: 3px; background: var(--line-soft); margin-top: 5px; overflow: hidden; }
+  .rbar i { display: block; height: 100%; border-radius: 3px; }
+  .hm { display: flex; gap: 3px; }
+  .hm .col { display: flex; flex-direction: column; gap: 3px; }
+  .hm .cell { width: 15px; height: 15px; border-radius: 3px; }
+  .hmlab { display: flex; flex-direction: column; gap: 3px; margin-right: 7px; font-size: 9.5px; color: var(--dim); }
+  .hmlab span { height: 15px; line-height: 15px; }
+
+  .savebar { position: sticky; bottom: 0; background: var(--accent-soft); border-top: 1px solid var(--accent-line); box-shadow: 0 -4px 14px rgba(16,23,42,.09); padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 6; }
+  .undot { width: 7px; height: 7px; border-radius: 50%; background: #E8A33D; display: inline-block; flex-shrink: 0; }
+  .preview { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 5px; padding: 11px 13px; font-size: 12px; }
+  .warn { background: #FFF6E8; border: 1px solid #E0BC80; border-radius: 5px; padding: 10px 13px; font-size: 12px; margin-bottom: 13px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .kpi { border: 1px solid var(--line); border-radius: 5px; padding: 12px; }
+  .kpi .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); display: flex; align-items: center; gap: 5px; }
+  .kpi .val { font-size: 25px; font-weight: 700; margin: 5px 0 2px; font-family: ui-monospace, monospace; }
+  .info { border: 1px solid var(--line); border-radius: 50%; width: 13px; height: 13px; font-size: 9px; display: inline-flex; align-items: center; justify-content: center; color: var(--dim); }
+  .tip { background: var(--rail); color: #fff; padding: 6px 10px; font-size: 11px; font-family: ui-monospace, monospace; display: inline-block; margin-top: 8px; border-radius: 5px; }
+  .bar-row { display: grid; grid-template-columns: 128px 1fr 42px; gap: 9px; align-items: center; margin-bottom: 5px; font-size: 12px; }
+  .bar { height: 14px; background: #98A0AC; border-radius: 2px; }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 74px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); padding-left: 4px; }
+  .spark div { width: 13px; background: #B6BDC7; border-radius: 2px 2px 0 0; }
+  .filters { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  /* Selection bar: accent-tinted, not dark. Dark is reserved for the nav rail —
+     using it here made a transient state look like permanent chrome. */
+  .bulkbar { background: var(--accent-soft); color: var(--accent); border-bottom: 1px solid var(--accent-line); padding: 8px 16px; display: flex; gap: 8px; align-items: center; font-size: 12px; }
+  .bulkbar .btn { background: #fff; color: var(--ink); border-color: var(--accent-line); }
+  .bulkbar .btn.ghostb { background: transparent; border-color: transparent; color: var(--accent); font-weight: 600; }
+  /* ---------- log-call dialog (production view) ---------- */
+  .stage { position: relative; }
+  .scrim { position: absolute; inset: 0; z-index: 10; background: rgba(16,23,42,.44); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; padding: 38px 16px; }
+  .dlg { width: 528px; background: #fff; border-radius: 11px; overflow: hidden; box-shadow: 0 28px 70px rgba(16,23,42,.40), 0 3px 8px rgba(16,23,42,.18); }
+  .dlg-hd { padding: 15px 18px 13px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .dlg-hd h2 { margin: 0 0 2px; font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
+  .x { width: 27px; height: 27px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--dim); background: var(--surface); border: 1px solid var(--line); flex-shrink: 0; }
+  .ctx { padding: 9px 18px; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; gap: 8px 20px; flex-wrap: wrap; font-size: 12px; align-items: center; color: var(--dim); }
+  .ctx b { color: var(--ink); font-weight: 600; }
+  .ctx .sep { width: 1px; height: 13px; background: var(--line); }
+  .dlg-bd { padding: 16px 18px; }
+  .lab { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); margin: 0 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .lab .opt { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+
+  .ogrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .ob { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-size: 13px; font-weight: 500; }
+  .ob .num { margin-left: auto; font-size: 10px; font-family: ui-monospace, monospace; color: var(--dim); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; background: var(--surface); }
+  .ob .d { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .ob.sel { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .ob.sel .num { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.42); color: #fff; }
+  .ob.sel .d { box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+  .olegend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 9px; font-size: 11px; color: var(--dim); }
+  .olegend span { display: inline-flex; align-items: center; gap: 5px; }
+  .olegend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  .qd { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .qchip { padding: 5px 11px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: #fff; }
+  .qchip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .dateinput { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--dim); }
+
+  .ta { border: 1px solid var(--accent); border-radius: 7px; padding: 10px 12px; font-size: 13px; min-height: 76px; line-height: 1.55; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .caret { display: inline-block; width: 1.5px; height: 15px; background: var(--ink); vertical-align: -3px; animation: bl 1.1s steps(1) infinite; }
+  @keyframes bl { 50% { opacity: 0; } }
+
+  .fx { margin-top: 15px; border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: 7px; padding: 11px 13px; font-size: 12.5px; display: flex; gap: 10px; align-items: flex-start; color: #1E2C74; line-height: 1.5; }
+  .fx b { font-weight: 700; }
+
+  .dlg-ft { padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .btn.lg { padding: 7px 15px; font-size: 13px; font-weight: 600; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<svg style="display:none">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M3 6.5 4.6 8 7.5 5"/><path d="M3 13.5 4.6 15 7.5 12"/><path d="M3 20.5 4.6 22 7.5 19"/><line x1="11" y1="6" x2="21" y2="6"/><line x1="11" y1="13" x2="21" y2="13"/><line x1="11" y1="20" x2="21" y2="20"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-seq" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.5"/><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 7.5v9"/><path d="M8.5 5H13a2.5 2.5 0 0 1 2.5 2.5v2"/><path d="M8.5 19H13a2.5 2.5 0 0 0 2.5-2.5v-2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="13"/><line x1="10" y1="21" x2="10" y2="4"/><line x1="16" y1="21" x2="16" y2="9"/><line x1="21" y1="21" x2="21" y2="16"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3 6 9 6.5L21 6"/></symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-6a5 5 0 0 0-5-5H4"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="7.5" x2="11" y2="7.5"/><line x1="13" y1="7.5" x2="16" y2="7.5"/><line x1="8" y1="12" x2="11" y2="12"/><line x1="13" y1="12" x2="16" y2="12"/><path d="M10 21v-4h4v4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><polyline points="7 9 12 4 17 9"/><polyline points="7 15 12 20 17 15"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></symbol>
+  <symbol id="i-chevup" viewBox="0 0 24 24"><polyline points="6 15 12 9 18 15"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="16" cy="12" r="2.2"/><circle cx="7" cy="17" r="2.2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/></symbol>
+</svg>
+
+<div class="navigator">
+  <div class="inner">
+    <span class="lbl">Wireframe navigator</span>
+    <nav class="tabs" id="tabs">
+      <button data-s="today" aria-selected="true">1 · Today</button>
+      <button data-s="log" aria-selected="false">2 · Log Call</button>
+      <button data-s="prospect" aria-selected="false">3 · Prospect</button>
+      <button data-s="sequence" aria-selected="false">4 · Sequence Editor</button>
+      <button data-s="list" aria-selected="false">5 · Prospects</button>
+      <button data-s="stats" aria-selected="false">6 · Stats</button>
+    </nav>
+    <span class="lbl" style="margin-left:auto">← → arrow keys</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ================= 1. TODAY ================= -->
+<section class="screen active" id="s-today">
+  <div class="screen-note">
+    <b>Today.</b> One flat table, mixed types, sorted by due time. Type chips <i>filter</i> rather than group.
+    Ticking a call row opens the outcome popover — a dial logged without an outcome is a hole in your connect rate.
+  </div>
+
+  <div class="frame" data-nav="today">
+    <div class="main">
+
+      <div class="bar1">
+        <h1>Activities</h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+
+      <div class="bar2">
+        <span class="btn acc"><svg class="ic s"><use href="#i-plus"/></svg> Activity ▾</span>
+        <span class="btn">Enroll prospects</span>
+        <span style="margin-left:auto" class="count">17 activities</span>
+      </div>
+
+      <div class="bar3">
+        <span class="tchip on">All <span class="n">17</span></span>
+        <span class="vsep"></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-phone"/></svg> Call <span class="n">12</span></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-mail"/></svg> Email <span class="n">3</span></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-reply"/></svg> Reply <span class="n">1</span></span>
+        <span class="tchip">LinkedIn <span class="n">0</span></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-square"/></svg> Manual <span class="n">1</span></span>
+
+        <span class="ttabs">
+          <span class="ttab od">Overdue <span class="n">2</span></span>
+          <span class="ttab on">Today <span class="n">15</span></span>
+          <span class="ttab">Tomorrow</span>
+          <span class="ttab">This week</span>
+          <span class="ttab">Next week</span>
+          <span class="ttab">Pick range ▾</span>
+        </span>
+      </div>
+
+      <table class="act">
+        <thead>
+          <tr>
+            <th style="width:44px">Done</th>
+            <th>Subject</th>
+            <th style="width:160px">Prospect</th>
+            <th style="width:175px">Company</th>
+            <th style="width:180px">Phone / Email</th>
+            <th style="width:125px">Last outcome</th>
+            <th style="width:96px; text-align:right"><svg class="ic s" style="display:inline-block"><use href="#i-sliders"/></svg></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 2 <span class="overdue-tag">· overdue 1d</span></span></td>
+            <td>Marko Virtanen</td>
+            <td class="muted">Nordkapp Logistics</td>
+            <td class="mono tiny">+358 40 555 0142</td>
+            <td><span class="tagpill">No answer</span></td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti reply"><svg class="ic s"><use href="#i-reply"/></svg></span> Reply to email chain <span class="overdue-tag">· overdue 1d</span></span></td>
+            <td>Elina Koskinen</td>
+            <td class="muted">Baltic Freight Oy</td>
+            <td class="mono tiny muted">elina@balticfreight.fi</td>
+            <td><span class="tagpill">No answer</span></td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+
+          <tr class="sel">
+            <td class="pop-wrap">
+              <span class="chk due">▾</span>
+              <div class="pop">
+                <div class="hd">Outcome — Janne Laakso</div>
+                <div class="pop-grid">
+                  <span class="oc">No answer <span class="kbd">1</span></span>
+                  <span class="oc">Voicemail <span class="kbd">2</span></span>
+                  <span class="oc">Gatekeeper <span class="kbd">3</span></span>
+                  <span class="oc on">Connected <span class="kbd">4</span></span>
+                  <span class="oc">Callback <span class="kbd">5</span></span>
+                  <span class="oc">Booked <span class="kbd">6</span></span>
+                  <span class="oc">Not interested <span class="kbd">7</span></span>
+                  <span class="oc">Wrong number <span class="kbd">8</span></span>
+                </div>
+                <div class="field" style="display:block; margin-top:8px; min-height:34px">Add a note… <span class="kbd">n</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:9px">
+                  <span class="tiny muted">Saves &amp; moves to next row</span>
+                  <span class="btn acc sm">Save ⏎</span>
+                </div>
+              </div>
+            </td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1</span></td>
+            <td>Janne Laakso</td>
+            <td class="muted">Helsinki Metalworks</td>
+            <td class="mono tiny">+358 50 555 0198</td>
+            <td class="muted tiny">—</td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti mail"><svg class="ic s"><use href="#i-mail"/></svg></span> Personal email</span></td>
+            <td>Sanna Ojala</td>
+            <td class="muted">Turku Marine</td>
+            <td class="mono tiny muted">sanna@turkumarine.fi</td>
+            <td class="muted tiny">—</td>
+            <td><span class="rowacts"><span class="btn sm">Copy template</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1 <span class="tagpill acc">callback</span></span></td>
+            <td>Tuomas Heikkilä</td>
+            <td class="muted">Arctic Components</td>
+            <td class="mono tiny">+358 40 555 0103</td>
+            <td><span class="tagpill">Callback req.</span></td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 3</span></td>
+            <td>Petra Nieminen</td>
+            <td class="muted">Saimaa Systems</td>
+            <td class="mono tiny">+358 44 555 0177</td>
+            <td><span class="tagpill">Gatekeeper</span></td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 2</span></td>
+            <td>Aki Karhu</td>
+            <td class="muted">Veho</td>
+            <td class="mono tiny">+358 50 525 6468</td>
+            <td><span class="tagpill">Voicemail</span></td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti mail"><svg class="ic s"><use href="#i-mail"/></svg></span> Personal email</span></td>
+            <td>Paul Westerlund</td>
+            <td class="muted">Westerlund Group</td>
+            <td class="mono tiny muted">paul@westerlund.fi</td>
+            <td class="muted tiny">—</td>
+            <td><span class="rowacts"><span class="btn sm">Copy template</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1</span></td>
+            <td>Katariina Klemetti</td>
+            <td class="muted">SOK</td>
+            <td class="mono tiny">+358 50 388 3449</td>
+            <td class="muted tiny">—</td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chk"></span></td>
+            <td><span class="subj"><span class="ti li">in</span> Connection request</span></td>
+            <td>Timo Mäenpää</td>
+            <td class="muted">NCC Suomi</td>
+            <td class="mono tiny muted">/in/timomaenpaa</td>
+            <td class="muted tiny">—</td>
+            <td><span class="rowacts"><span class="btn sm">Snooze ▾</span></span></td>
+          </tr>
+          <tr style="opacity:.45">
+            <td><span class="chk"></span></td>
+            <td><span class="ph" style="width:180px"></span></td>
+            <td><span class="ph" style="width:112px"></span></td>
+            <td><span class="ph" style="width:136px"></span></td>
+            <td><span class="ph" style="width:130px"></span></td>
+            <td><span class="ph" style="width:70px"></span></td>
+            <td class="tiny muted" style="text-align:right">…7 more</td>
+          </tr>
+
+          <tr class="done">
+            <td><span class="chk ok"><svg class="ic s" style="width:11px;height:11px"><polyline points="20 6 9 17 4 12"/></svg></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 2</span></td>
+            <td>Antti Savilampi</td>
+            <td>Antilooppi</td>
+            <td class="mono tiny">+358 40 779 8185</td>
+            <td>No answer</td>
+            <td class="tiny" style="text-align:right">09:12</td>
+          </tr>
+          <tr class="done">
+            <td><span class="chk ok"><svg class="ic s" style="width:11px;height:11px"><polyline points="20 6 9 17 4 12"/></svg></span></td>
+            <td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1</span></td>
+            <td>Alex Peltonen</td>
+            <td>Relex Solutions</td>
+            <td class="mono tiny">+358 44 210 9911</td>
+            <td>Meeting booked</td>
+            <td class="tiny" style="text-align:right">08:47</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>Behaviour notes.</b>
+    Type chips filter rather than group — click <b>Call</b> and only calls remain, which is the batching move for a calling hour. Chips and time tabs combine (Overdue + Call).
+    Overdue rows stay in the main list rather than hiding in their own tab, because a buried overdue call is a lost prospect.
+    Completed rows stay in place struck through, so the list visibly empties as you work.
+    Clicking anywhere in a row opens the prospect; <b>Snooze ▾</b> gives +1 day / +3 days / next Monday / pick a date.
+    <br><br>
+    <b>On dropping the step column:</b> the subject already carries the position — “Call attempt 2” tells you where you are without a second column competing for the eye. Full sequence progress lives on the prospect page, where you actually need it.
+  </div>
+</section>
+
+<!-- ================= 2. LOG CALL ================= -->
+<section class="screen" id="s-log">
+  <div class="screen-note">
+    <b>Log call — production view.</b> The full dialog, as it actually appears: opened over the queue, one conditional section
+    matching the selected outcome, and a live preview of what the sequence engine will do when you save.
+    Most dials never open this — they get logged with a single keypress from the row popover. This is for the ones that need a date or a real note.
+  </div>
+
+  <div class="frame stage" data-nav="today">
+    <div class="main">
+      <div class="bar1">
+        <h1>Activities</h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+      <div class="bar2">
+        <span class="btn acc"><svg class="ic s"><use href="#i-plus"/></svg> Activity ▾</span>
+        <span class="btn">Enroll prospects</span>
+        <span style="margin-left:auto" class="count">17 activities</span>
+      </div>
+      <div class="bar3">
+        <span class="tchip on">All <span class="n">17</span></span>
+        <span class="vsep"></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-phone"/></svg> Call <span class="n">12</span></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-mail"/></svg> Email <span class="n">3</span></span>
+        <span class="tchip"><svg class="ic s"><use href="#i-reply"/></svg> Reply <span class="n">1</span></span>
+        <span class="ttabs">
+          <span class="ttab od">Overdue <span class="n">2</span></span>
+          <span class="ttab on">Today <span class="n">15</span></span>
+          <span class="ttab">Tomorrow</span>
+          <span class="ttab">This week</span>
+        </span>
+      </div>
+      <table class="act">
+        <thead><tr><th style="width:44px">Done</th><th>Subject</th><th style="width:160px">Prospect</th><th style="width:175px">Company</th><th style="width:180px">Phone / Email</th><th style="width:125px">Last outcome</th><th style="width:96px"></th></tr></thead>
+        <tbody>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 2 <span class="overdue-tag">· overdue 1d</span></span></td><td>Marko Virtanen</td><td class="muted">Nordkapp Logistics</td><td class="mono tiny">+358 40 555 0142</td><td><span class="tagpill">No answer</span></td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti reply"><svg class="ic s"><use href="#i-reply"/></svg></span> Reply to email chain <span class="overdue-tag">· overdue 1d</span></span></td><td>Elina Koskinen</td><td class="muted">Baltic Freight Oy</td><td class="mono tiny muted">elina@balticfreight.fi</td><td><span class="tagpill">No answer</span></td><td></td></tr>
+          <tr class="sel"><td><span class="chk due">▾</span></td><td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1</span></td><td>Janne Laakso</td><td class="muted">Helsinki Metalworks</td><td class="mono tiny">+358 50 555 0198</td><td class="muted tiny">—</td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti mail"><svg class="ic s"><use href="#i-mail"/></svg></span> Personal email</span></td><td>Sanna Ojala</td><td class="muted">Turku Marine</td><td class="mono tiny muted">sanna@turkumarine.fi</td><td class="muted tiny">—</td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 3</span></td><td>Petra Nieminen</td><td class="muted">Saimaa Systems</td><td class="mono tiny">+358 44 555 0177</td><td><span class="tagpill">Gatekeeper</span></td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 2</span></td><td>Aki Karhu</td><td class="muted">Veho</td><td class="mono tiny">+358 50 525 6468</td><td><span class="tagpill">Voicemail</span></td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span> Call attempt 1</span></td><td>Katariina Klemetti</td><td class="muted">SOK</td><td class="mono tiny">+358 50 388 3449</td><td class="muted tiny">—</td><td></td></tr>
+          <tr><td><span class="chk"></span></td><td><span class="subj"><span class="ti li">in</span> Connection request</span></td><td>Timo Mäenpää</td><td class="muted">NCC Suomi</td><td class="mono tiny muted">/in/timomaenpaa</td><td class="muted tiny">—</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="scrim">
+      <div class="dlg">
+        <div class="dlg-hd">
+          <div>
+            <h2>Log call</h2>
+            <span class="tiny muted">Janne Laakso · Operations Director, Helsinki Metalworks</span>
+          </div>
+          <span class="x">✕</span>
+        </div>
+
+        <div class="ctx">
+          <span style="display:inline-flex;align-items:center;gap:6px">
+            <svg class="ic s"><use href="#i-phone"/></svg>
+            <b class="mono" style="color:var(--accent)">+358 50 555 0198</b>
+          </span>
+          <span class="sep"></span>
+          <span><b>Call attempt 1</b> · step 2 of 5</span>
+          <span class="sep"></span>
+          <span>Dial 4 · last was <b>no answer</b>, 4 Aug</span>
+        </div>
+
+        <div class="dlg-bd">
+          <p class="lab">Outcome <span class="opt">press <span class="kbd">1</span>–<span class="kbd">8</span></span></p>
+          <div class="ogrid">
+            <span class="ob"><i class="d" style="background:#98A0AC"></i> No answer <span class="num">1</span></span>
+            <span class="ob"><i class="d" style="background:#98A0AC"></i> Voicemail <span class="num">2</span></span>
+            <span class="ob"><i class="d" style="background:#98A0AC"></i> Gatekeeper <span class="num">3</span></span>
+            <span class="ob"><i class="d" style="background:#98A0AC"></i> Connected <span class="num">4</span></span>
+            <span class="ob sel"><i class="d" style="background:#E8A33D"></i> Callback requested <span class="num">5</span></span>
+            <span class="ob"><i class="d" style="background:var(--good)"></i> Meeting booked <span class="num">6</span></span>
+            <span class="ob"><i class="d" style="background:var(--bad)"></i> Not interested <span class="num">7</span></span>
+            <span class="ob"><i class="d" style="background:var(--bad)"></i> Wrong number <span class="num">8</span></span>
+          </div>
+          <div class="olegend">
+            <span><i style="background:#98A0AC"></i> advances the sequence</span>
+            <span><i style="background:#E8A33D"></i> reschedules this step</span>
+            <span><i style="background:var(--good)"></i> ends — won</span>
+            <span><i style="background:var(--bad)"></i> ends — dead</span>
+          </div>
+
+          <p class="lab" style="margin-top:17px">Call back on <span class="opt" style="color:var(--bad)">required</span></p>
+          <div class="qd">
+            <span class="qchip">Tomorrow</span>
+            <span class="qchip on">Thu 6 Aug</span>
+            <span class="qchip">Next Monday</span>
+            <span class="dateinput"><svg class="ic s"><use href="#i-cal"/></svg> Pick a date</span>
+          </div>
+
+          <p class="lab" style="margin-top:17px">Note <span class="opt">optional</span></p>
+          <div class="ta">Asked me to call back Thursday morning. Confirmed he owns the fleet budget but Katri Salminen in finance signs off<span class="caret"></span></div>
+
+          <div class="fx">
+            <svg class="ic s" style="flex-shrink:0;margin-top:1px"><use href="#i-seq"/></svg>
+            <span>
+              <b>On save:</b> re-creates <b>Call attempt 1</b> for Thursday 6 August.
+              Sequence position is unchanged — still step 2 of 5, with two attempts remaining after this one.
+            </span>
+          </div>
+        </div>
+
+        <div class="dlg-ft">
+          <span class="tiny muted">Duration <b class="mono" style="color:var(--ink)">2:14</b> · timer started when the dialog opened</span>
+          <span style="display:flex; gap:8px">
+            <span class="btn lg">Cancel</span>
+            <span class="btn acc lg">Save &amp; next →</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>What makes this production rather than wireframe.</b>
+    Only the conditional section for the <i>selected</i> outcome renders — Callback here, so a date picker with sensible quick options.
+    Choose <b>Meeting booked</b> and this becomes a date-and-time field; choose <b>No answer</b> and it disappears entirely, leaving the dialog
+    two fields tall.
+    <br><br>
+    <b>The coloured dot on each outcome is the detail worth building.</b> It tells you what the button will do to the sequence before you press it:
+    grey advances, amber reschedules the current step, green and red end it. The engine's behaviour is otherwise completely invisible, and
+    "why did this prospect stop getting called?" is the question you'd otherwise be answering with a database client.
+    <br><br>
+    The <b>On save</b> strip spells out the consequence in full sentences, with the real dates. It costs one line of code per outcome branch
+    and removes an entire category of "wait, what did that just do?".
+    The <b>duration timer</b> starts when the dialog opens, so talk time is captured without you doing anything.
+  </div>
+</section>
+
+<!-- ================= 3. PROSPECT ================= -->
+<section class="screen" id="s-prospect">
+  <div class="screen-note">
+    <b>Prospect detail.</b> Borrows Pipedrive's <i>structure</i> — one pinned next-action above a type-filtered history — but renders it
+    in this app's own language: panels, chips and hairline rows rather than floating cards on a dashed rail.
+  </div>
+
+  <div class="frame" data-nav="prospects">
+    <div class="main">
+      <div class="bar1">
+        <h1>Janne Laakso <span class="pill good" style="vertical-align:middle">ACTIVE</span></h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+
+      <div class="bar2">
+        <span class="btn acc"><svg class="ic s"><use href="#i-phone"/></svg> Log call</span>
+        <span class="btn"><svg class="ic s"><use href="#i-note"/></svg> Add note</span>
+        <span class="btn"><svg class="ic s"><use href="#i-mail"/></svg> They replied</span>
+        <span class="btn">Status ▾</span>
+        <span style="margin-left:auto" class="btn">More ▾</span>
+      </div>
+
+      <div class="pcols">
+        <!-- ---------- left: details ---------- -->
+        <div class="side">
+          <div class="panel">
+            <div class="panel-hd">Details <span class="ghost">Edit</span></div>
+            <div class="panel-bd">
+              <div class="kv">
+                <span class="k">Phone</span><a href="#" class="mono" style="color:var(--accent)">+358 50 555 0198</a>
+                <span class="k">Email</span><span class="mono" style="font-size:11.5px">janne@hkimetal.fi</span>
+                <span class="k">LinkedIn</span><span class="mono muted" style="font-size:11.5px">/in/jannelaakso</span>
+                <span class="k">Title</span><span>Operations Director</span>
+                <span class="k">Company</span><span>Helsinki Metalworks</span>
+                <span class="k">Source</span><span class="muted">list-scrape</span>
+                <span class="k">Timezone</span><span class="muted">Europe/Helsinki</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">Sequence</div>
+            <div class="panel-bd">
+              <b>Standard Outbound</b><br>
+              <span class="muted">Step 2 of 5 · next: Call attempt 1, today</span>
+              <div style="margin-top:9px; display:flex; gap:5px; flex-wrap:wrap">
+                <span class="btn sm">Reschedule</span><span class="btn sm">Pause</span><span class="btn sm">Change</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd"><span style="display:flex;align-items:center;gap:6px"><svg class="ic s"><use href="#i-pin"/></svg> Pinned notes</span> <span class="ghost">Edit</span></div>
+            <div class="panel-bd" style="line-height:1.6">
+              Decision maker for fleet ops, but Katri in finance signs.<br><br>
+              Budget cycle resets in March.<br><br>
+              Best reached before 09:00 — after that he's on the floor.
+              <div class="tiny muted" style="margin-top:9px">edited 3 Aug</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">Quick stats</div>
+            <table class="wt">
+              <tr><td>Dials</td><td class="num">4</td></tr>
+              <tr><td>Connects</td><td class="num">1</td></tr>
+              <tr><td>Emails</td><td class="num">2</td></tr>
+              <tr><td>In sequence</td><td class="num">9d</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- ---------- right: focus + history ---------- -->
+        <div class="feed">
+
+          <div class="focus">
+            <div class="focus-hd">
+              <span>Focus · next action</span>
+              <span style="font-weight:400; text-transform:none; letter-spacing:0">Step 2 of 5</span>
+            </div>
+            <div class="focus-bd">
+              <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap">
+                <span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span>
+                <span style="font-size:14px; font-weight:700">Call attempt 1</span>
+                <span class="tagpill acc">due today</span>
+                <span class="mono tiny" style="color:var(--accent)">+358 50 555 0198</span>
+                <span style="margin-left:auto; display:flex; gap:6px">
+                  <span class="btn sm">Snooze ▾</span>
+                  <span class="btn acc sm">Log outcome</span>
+                </span>
+              </div>
+              <div class="ev-n" style="margin-top:11px">
+                <span class="k">Before you dial</span>
+                Last outcome was <b>no answer</b> on 4 Aug at 09:12 — two attempts left before the reply-to-chain step.
+                Pinned: best reached before 09:00.
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-bottom:0">
+            <div class="panel-hd" style="padding:8px 11px">
+              <span>History</span>
+              <span style="display:flex; gap:3px; text-transform:none; letter-spacing:0; font-weight:400">
+                <span class="tchip on">All <span class="n">11</span></span>
+                <span class="tchip">Calls <span class="n">4</span></span>
+                <span class="tchip">Emails <span class="n">2</span></span>
+                <span class="tchip">Notes <span class="n">2</span></span>
+                <span class="tchip">Changes <span class="n">3</span></span>
+              </span>
+            </div>
+
+            <div class="ev">
+              <span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span>
+              <div>
+                <div class="ev-t">Call attempt 1 <span class="out">— no answer</span></div>
+                <div class="ev-m"><span>Step 2</span><span>Dial 4 of 4</span></div>
+                <div class="ev-n"><span class="k">Call note</span>Rang out, no voicemail box. Used the direct dial, not the switchboard.</div>
+              </div>
+              <div class="ev-w">4 Aug<br>09:12</div>
+            </div>
+
+            <div class="ev">
+              <span class="ti call"><svg class="ic s"><use href="#i-phone"/></svg></span>
+              <div>
+                <div class="ev-t">Call attempt 1 <span class="out">— gatekeeper</span></div>
+                <div class="ev-m"><span>Step 2</span><span>Dial 3 of 4</span></div>
+                <div class="ev-n"><span class="k">Call note</span>Assistant took a message. Said he's on the floor mornings — try before 09:00.</div>
+              </div>
+              <div class="ev-w">1 Aug<br>11:05</div>
+            </div>
+
+            <div class="ev">
+              <span class="ti"><svg class="ic s"><use href="#i-note"/></svg></span>
+              <div>
+                <div class="ev-t">Note added</div>
+                <div class="ev-n">Katri Salminen in finance signs off, not Janne. Worth getting her name into the next call.</div>
+              </div>
+              <div class="ev-w">30 Jul<br>14:20</div>
+            </div>
+
+            <div class="ev">
+              <span class="ti mail"><svg class="ic s"><use href="#i-mail"/></svg></span>
+              <div>
+                <div class="ev-t">Personal email sent</div>
+                <div class="ev-m">
+                  <span>Step 1</span>
+                  <span class="mono">antti.kiiski@reto.fi → janne@hkimetal.fi</span>
+                  <span style="color:var(--accent)"><svg class="ic s"><use href="#i-link"/></svg> Open thread</span>
+                </div>
+                <div class="ev-n">“Hei Janne — huomasin että Helsinki Metalworks on laajentanut kalustoaan. Soitanko huomenna aamulla…” <span class="ghost">show more</span></div>
+              </div>
+              <div class="ev-w">26 Jul<br>16:40</div>
+            </div>
+
+            <div class="ev">
+              <span class="ti"><svg class="ic s"><use href="#i-seq"/></svg></span>
+              <div>
+                <div class="ev-t" style="font-weight:400">Enrolled in <b>Standard Outbound</b></div>
+                <div class="ev-m"><span>Bulk enroll · 42 prospects</span></div>
+              </div>
+              <div class="ev-w">26 Jul<br>16:38</div>
+            </div>
+
+            <div class="ev">
+              <span class="ti"><svg class="ic s"><use href="#i-plus"/></svg></span>
+              <div>
+                <div class="ev-t" style="font-weight:400">Prospect created</div>
+                <div class="ev-m"><span>CSV import “jul-list”</span></div>
+              </div>
+              <div class="ev-w">26 Jul<br>16:35</div>
+            </div>
+
+            <div class="ev" style="justify-content:center">
+              <span></span>
+              <div><span class="btn sm">Load older activity</span></div>
+              <span></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>What's borrowed, and what's ours.</b>
+    Three ideas carry over because they're structurally right: a pinned next-action so "what do I do about this person" is never below
+    the fold, a type-filtered history rather than one undifferentiated stream, and notes attached to the event that produced them.
+    <br><br>
+    The execution is this app's own. No dashed gutter rail, no floating cards, no yellow bands — the history is hairline rows inside a
+    panel, using the same square type icons and filter chips as the Today screen, so the two pages read as one product.
+    Notes sit in an indented block with a plum rule; the date column is right-aligned rather than buried in a meta line, which makes the
+    stream scannable by <i>when</i> as well as <i>what</i>.
+    <br><br>
+    Two things Pipedrive can't have: the <b>Sequence</b> panel on the left, and the <b>“Before you dial”</b> summary inside Focus —
+    last outcome, dials remaining, and the pinned constraint, assembled into the one sentence you actually need at the moment you pick up the phone.
+    <br><br>
+    <b>Focus holds exactly one entry</b>, which falls out of the "only materialize the next task" rule from the spec.
+    If it ever shows two for a single prospect, the engine has a bug.
+  </div>
+</section>
+
+<!-- ================= 4. SEQUENCE EDITOR ================= -->
+<section class="screen" id="s-sequence">
+  <div class="screen-note">
+    <b>Sequence editor — production view.</b> Because only the <i>next</i> task is ever materialized, edits here need no migration:
+    they apply to each prospect's next generated step. The dated preview prevents delay-day mistakes, the per-step numbers tell you
+    which steps are worth keeping, and the impact banner prevents surprises.
+  </div>
+
+  <div class="frame scrolls" data-nav="sequences">
+    <div class="main">
+      <div class="bar1">
+        <h1 style="display:flex;align-items:center;gap:8px">
+          Standard Outbound
+          <svg class="ic" style="color:var(--dim);width:16px;height:16px"><use href="#i-chev"/></svg>
+        </h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+
+      <div class="bar2">
+        <span class="pill acc st">ACTIVE</span>
+        <span class="count">5 steps · 47 enrolled · 23 mid-sequence</span>
+        <span style="margin-left:auto"></span>
+        <span class="btn">Duplicate</span>
+        <span class="btn">More <svg class="ic s"><use href="#i-chev"/></svg></span>
+      </div>
+
+      <div style="padding:11px 16px; border-bottom:1px solid var(--line); font-size:12.5px; color:var(--dim); display:flex; gap:9px; align-items:flex-start">
+        <svg class="ic s" style="color:var(--accent);flex-shrink:0;margin-top:2px"><use href="#i-seq"/></svg>
+        <span>
+          Steps run <b style="color:var(--ink)">top to bottom</b>. Each one becomes a task in your Today queue after the wait time below,
+          counted from the moment you complete the step above it. Drag the handles to reorder.
+        </span>
+      </div>
+
+      <div class="seq-layout">
+        <!-- ---------- steps ---------- -->
+        <div class="seq-main">
+          <div class="warn" style="display:flex;gap:10px;align-items:flex-start">
+            <svg class="ic s" style="color:#A9761C;flex-shrink:0;margin-top:2px"><use href="#i-warn"/></svg>
+            <span>
+              <b>23 prospects are mid-sequence.</b> Changes apply to their next step onward; steps they've already passed won't be re-run.
+              <a href="#" style="color:#8A5E12;font-weight:600;margin-left:4px">See where they are</a>
+            </span>
+          </div>
+
+          <div class="srow-hd">
+            <span></span><span></span>
+            <span>Type</span>
+            <span>Task name<span class="hint">what you'll see in the queue</span></span>
+            <span>Wait before<span class="hint">after previous step</span></span>
+            <span>Content<span class="hint">script or template</span></span>
+            <span></span>
+          </div>
+
+          <!-- step 1: expanded, template editor open -->
+          <div class="srow open">
+            <span class="grip">⠿</span>
+            <span class="snum">1</span>
+            <span class="ctl"><span class="ti mail" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-mail"/></svg></span><span class="cv">Email</span><svg class="ic s cc"><use href="#i-chev"/></svg></span>
+            <span>
+              <span class="ctl input"><span class="cv">Personal email</span></span>
+              <div class="sstat"><b>104</b> sent · <b>4</b> replies · <b>0</b> booked</div>
+            </span>
+            <span class="stepper"><span class="b">−</span><span class="v">Start<br><span style="font-size:10.5px;color:var(--dim)">no wait</span></span><span class="b">+</span></span>
+            <span class="btn sm acc" style="justify-content:center">Template <svg class="ic s"><use href="#i-chevup"/></svg></span>
+            <span class="ghost">⋯</span>
+
+            <div class="tplbox">
+              <p class="lab" style="margin-bottom:7px">
+                Email template <span class="opt">copied to your clipboard when you open this task</span>
+              </p>
+              <div class="ctl input" style="margin-bottom:7px"><span class="cv" style="color:var(--dim)">Subject</span><span class="cv" style="margin-left:8px">Nopea kysymys — {{company}}</span></div>
+              <div class="ta" style="border-color:var(--line);box-shadow:none;min-height:88px;font-size:12.5px">Hei {{first_name}},<br><br>huomasin että {{company}} on laajentanut kalustoaan. Autamme vastaavia yrityksiä…<br><br>Soitanko huomenna aamulla?</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:9px;flex-wrap:wrap">
+                <span class="tiny muted">Click to insert</span>
+                <span class="mtag">{{first_name}}</span><span class="mtag">{{last_name}}</span><span class="mtag">{{company}}</span><span class="mtag">{{title}}</span>
+                <span style="margin-left:auto" class="btn sm">Collapse <svg class="ic s"><use href="#i-chevup"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="srow">
+            <span class="grip">⠿</span><span class="snum">2</span>
+            <span class="ctl"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span><span class="cv">Call</span><svg class="ic s cc"><use href="#i-chev"/></svg></span>
+            <span>
+              <span class="ctl input"><span class="cv">Call attempt 1</span></span>
+              <div class="sstat"><b>96</b> done · <b>22</b> connects · <b>4</b> booked</div>
+            </span>
+            <span class="stepper"><span class="b">−</span><span class="v">1 business day</span><span class="b">+</span></span>
+            <span class="btn sm quiet" style="justify-content:center">+ Add script</span>
+            <span class="ghost">⋯</span>
+          </div>
+
+          <div class="srow">
+            <span class="grip">⠿</span><span class="snum">3</span>
+            <span class="ctl"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span><span class="cv">Call</span><svg class="ic s cc"><use href="#i-chev"/></svg></span>
+            <span>
+              <span class="ctl input"><span class="cv">Call attempt 2</span></span>
+              <div class="sstat"><b>78</b> done · <b>19</b> connects · <b>3</b> booked</div>
+            </span>
+            <span class="stepper"><span class="b">−</span><span class="v">2 business days</span><span class="b">+</span></span>
+            <span class="btn sm quiet" style="justify-content:center">+ Add script</span>
+            <span class="ghost">⋯</span>
+          </div>
+
+          <div class="srow">
+            <span class="grip">⠿</span><span class="snum">4</span>
+            <span class="ctl"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span><span class="cv">Call</span><svg class="ic s cc"><use href="#i-chev"/></svg></span>
+            <span>
+              <span class="ctl input"><span class="cv">Call attempt 3</span></span>
+              <div class="sstat"><b>61</b> done · <b>17</b> connects · <b>3</b> booked</div>
+            </span>
+            <span class="stepper"><span class="b">−</span><span class="v">2 business days</span><span class="b">+</span></span>
+            <span class="btn sm quiet" style="justify-content:center">+ Add script</span>
+            <span class="ghost">⋯</span>
+          </div>
+
+          <div class="srow">
+            <span class="grip">⠿</span><span class="snum">5</span>
+            <span class="ctl"><span class="ti reply" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-reply"/></svg></span><span class="cv">Reply</span><svg class="ic s cc"><use href="#i-chev"/></svg></span>
+            <span>
+              <span class="ctl input"><span class="cv">Reply to email chain</span></span>
+              <div class="sstat"><b>49</b> done · <b>2</b> replies · <b>2</b> booked</div>
+            </span>
+            <span class="stepper"><span class="b">−</span><span class="v">1 business day</span><span class="b">+</span></span>
+            <span class="btn sm hastpl" style="justify-content:center"><svg class="ic s" style="width:11px;height:11px"><use href="#i-check"/></svg> Template</span>
+            <span class="ghost">⋯</span>
+          </div>
+
+          <div class="addstep"><svg class="ic s"><use href="#i-plus"/></svg> Add step</div>
+
+          <p class="tiny muted" style="margin-top:13px; line-height:1.6">
+            Delays are business days counted from when the <b>previous step is completed</b>, not from enrolment — so a step logged late
+            shifts everything after it automatically. Weekends and Finnish public holidays are skipped.
+          </p>
+        </div>
+
+        <!-- ---------- preview ---------- -->
+        <div class="seq-side">
+          <div class="prev">
+            <div class="prev-hd">Schedule preview</div>
+            <div class="prev-ctl">
+              If enrolled
+              <span class="qchip on">Today · Tue</span>
+              <span class="qchip">Mon</span>
+              <span class="qchip">Fri</span>
+            </div>
+
+            <div class="prow">
+              <span class="pdate">Tue 4 Aug</span>
+              <span class="ti mail" style="width:20px;height:20px"><svg class="ic s" style="width:12px;height:12px"><use href="#i-mail"/></svg></span>
+              <span>Personal email</span>
+              <span class="pdelay">now</span>
+            </div>
+            <div class="prow">
+              <span class="pdate">Wed 5 Aug</span>
+              <span class="ti call" style="width:20px;height:20px"><svg class="ic s" style="width:12px;height:12px"><use href="#i-phone"/></svg></span>
+              <span>Call attempt 1</span>
+              <span class="pdelay">+1</span>
+            </div>
+            <div class="prow">
+              <span class="pdate">Fri 7 Aug</span>
+              <span class="ti call" style="width:20px;height:20px"><svg class="ic s" style="width:12px;height:12px"><use href="#i-phone"/></svg></span>
+              <span>Call attempt 2</span>
+              <span class="pdelay">+2</span>
+            </div>
+            <div class="wknd">weekend skipped · 8–9 Aug</div>
+            <div class="prow">
+              <span class="pdate">Tue 11 Aug</span>
+              <span class="ti call" style="width:20px;height:20px"><svg class="ic s" style="width:12px;height:12px"><use href="#i-phone"/></svg></span>
+              <span>Call attempt 3</span>
+              <span class="pdelay">+2</span>
+            </div>
+            <div class="prow">
+              <span class="pdate">Wed 12 Aug</span>
+              <span class="ti reply" style="width:20px;height:20px"><svg class="ic s" style="width:12px;height:12px"><use href="#i-reply"/></svg></span>
+              <span>Reply to chain</span>
+              <span class="pdelay">+1</span>
+            </div>
+            <div class="prev-ft">Runs <b style="color:var(--ink)">8 calendar days</b> · 6 business days · 3 dials</div>
+          </div>
+
+          <div class="panel" style="margin-top:12px">
+            <div class="panel-hd">This sequence</div>
+            <table class="wt">
+              <tr><td>Enrolled, all time</td><td class="num">104</td></tr>
+              <tr><td>Currently running</td><td class="num">23</td></tr>
+              <tr><td>Meetings booked</td><td class="num">12</td></tr>
+              <tr><td>Booked per enrolled</td><td class="num">11.5%</td></tr>
+              <tr><td>Dials per meeting</td><td class="num">34</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="savebar">
+        <span style="display:flex;align-items:center;gap:9px;font-size:12.5px;min-width:0">
+          <span class="undot"></span>
+          <b style="color:var(--ink)">2 unsaved changes</b>
+          <span class="trunc" style="color:var(--dim)">Call attempt 2 wait 1 → 2 days · email template edited</span>
+        </span>
+        <span style="display:flex;gap:8px;flex-shrink:0">
+          <span class="btn lg">Discard</span>
+          <span class="btn acc lg"><svg class="ic s"><use href="#i-check"/></svg> Save changes</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>Clarity fixes in this pass.</b>
+    <br><br>
+    <b>The save bar is now always on screen.</b> It was sticky, but the page grew taller than the viewport so it sat below the fold — which is
+    the same as not existing. The editor is now its own scroll container, so the bar pins to the bottom of the view no matter how many steps
+    you add, and it's accent-tinted so it reads as a live action bar rather than a footer.
+    <br><br>
+    <b>Column headers.</b> The single cheapest fix for "what is this control?". <i>Wait before — after previous step</i> and
+    <i>Content — script or template</i> answer both questions before you have to click anything. A one-line explainer above the list says
+    steps run top to bottom and what the wait is measured from.
+    <br><br>
+    <b>"Immediately" became "Start / no wait".</b> Under a column headed <i>Wait before</i>, the first step's value has to read as "there
+    isn't one" — not as a timing instruction you might have misconfigured.
+    <br><br>
+    <b>Template buttons now carry state.</b> Filled with an up-chevron means open, tinted with a tick means one exists, dashed
+    <i>+ Add script</i> means empty. Previously every step showed the same button whether or not it had content, so the only way to find out
+    was to click all five.
+    <br><br>
+    <b>Still the feature that earns the page its keep: per-step numbers.</b> Attempt 3 has booked 3 meetings against attempt 1's 4, so it pays
+    for itself. If it read <i>61 done · 1 connect · 0 booked</i>, you'd delete the row and get the time back. Without these you're editing on
+    instinct, because the funnel report lives on a screen you'd have to remember to open.
+  </div>
+</section>
+
+<!-- ================= 5. PROSPECTS ================= -->
+<section class="screen" id="s-list">
+  <div class="screen-note">
+    <b>Prospects — production view.</b> The database view: filter, select, bulk-enroll. CSV import and bulk enroll are day-one
+    features, not nice-to-haves — hand-entering prospects isn't a workflow. The enroll dialog carries a <b>spread over N days</b> option,
+    because bulk-enrolling 200 people otherwise dumps 200 tasks into today.
+  </div>
+
+  <div class="frame" data-nav="prospects">
+    <div class="main">
+      <div class="bar1">
+        <h1>Prospects <span class="count" style="font-weight:400">· 418</span></h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+      <div class="bar2">
+        <span class="btn acc"><svg class="ic s"><use href="#i-plus"/></svg> Add prospect</span>
+        <span class="btn"><svg class="ic s"><use href="#i-upload"/></svg> Import CSV</span>
+        <span style="margin-left:auto" class="btn"><svg class="ic s"><use href="#i-sliders"/></svg> Columns</span>
+      </div>
+
+      <div class="filters">
+        <span class="fdrop on"><span class="k">Status</span> Active <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="fdrop on"><span class="k">Sequence</span> Standard Outbound <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="fdrop"><span class="k">Source</span> Any <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="fdrop"><span class="k">Open task</span> Any <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="linkbtn">Clear 2 filters</span>
+        <span style="margin-left:auto" class="tiny muted">63 of 418 match</span>
+      </div>
+
+      <div class="bulkbar">
+        <span class="cb on"><svg class="ic s" style="width:10px;height:10px"><use href="#i-check"/></svg></span>
+        <b>3 selected</b>
+        <span class="btn sm"><svg class="ic s"><use href="#i-seq"/></svg> Enroll in sequence <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="btn sm">Change status <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="btn sm">Export</span>
+        <span class="btn sm" style="color:var(--bad)">Delete</span>
+        <span style="margin-left:auto" class="btn ghostb sm">Clear selection</span>
+      </div>
+
+      <table class="act">
+        <thead><tr>
+          <th style="width:38px"><span class="cb mix"></span></th>
+          <th><span class="sortable">Name <svg class="ic s"><use href="#i-chev"/></svg></span></th>
+          <th style="width:170px">Company</th>
+          <th style="width:150px">Phone</th>
+          <th style="width:118px">Status</th>
+          <th style="width:150px">Sequence</th>
+          <th style="width:56px">Step</th>
+          <th style="width:150px">Next task</th>
+          <th style="width:56px; text-align:right">Dials</th>
+          <th style="width:78px">Last</th>
+        </tr></thead>
+        <tbody>
+          <tr class="sel"><td><span class="cb on"><svg class="ic s" style="width:10px;height:10px"><use href="#i-check"/></svg></span></td>
+            <td><b>Janne Laakso</b><div class="tiny muted">Operations Director</div></td>
+            <td class="muted"><span class="trunc">Helsinki Metalworks</span></td><td class="mono tiny">+358 50 555 0198</td>
+            <td><span class="pill acc st">ACTIVE</span></td><td class="tiny"><span class="trunc">Standard Outbound</span></td><td class="mono tiny">2/5</td>
+            <td><span style="display:inline-flex;align-items:center;gap:6px" class="tiny"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span> Today</span></td>
+            <td class="mono" style="text-align:right">1</td><td class="tiny muted">4 Aug</td></tr>
+
+          <tr class="sel"><td><span class="cb on"><svg class="ic s" style="width:10px;height:10px"><use href="#i-check"/></svg></span></td>
+            <td><b>Marko Virtanen</b><div class="tiny muted">Fleet Manager</div></td>
+            <td class="muted"><span class="trunc">Nordkapp Logistics</span></td><td class="mono tiny">+358 40 555 0142</td>
+            <td><span class="pill acc st">ACTIVE</span></td><td class="tiny"><span class="trunc">Standard Outbound</span></td><td class="mono tiny">3/5</td>
+            <td><span style="display:inline-flex;align-items:center;gap:6px" class="tiny"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span> <span class="overdue-tag">Overdue 1d</span></span></td>
+            <td class="mono" style="text-align:right">2</td><td class="tiny muted">31 Jul</td></tr>
+
+          <tr class="sel"><td><span class="cb on"><svg class="ic s" style="width:10px;height:10px"><use href="#i-check"/></svg></span></td>
+            <td><b>Petra Nieminen</b><div class="tiny muted">COO</div></td>
+            <td class="muted"><span class="trunc">Saimaa Systems</span></td><td class="mono tiny">+358 44 555 0177</td>
+            <td><span class="pill acc st">ACTIVE</span></td><td class="tiny"><span class="trunc">Standard Outbound</span></td><td class="mono tiny">4/5</td>
+            <td><span style="display:inline-flex;align-items:center;gap:6px" class="tiny"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span> Today</span></td>
+            <td class="mono" style="text-align:right">3</td><td class="tiny muted">30 Jul</td></tr>
+
+          <tr><td><span class="cb"></span></td>
+            <td><b>Laura Mäkinen</b><div class="tiny muted">Head of Procurement</div></td>
+            <td class="muted"><span class="trunc">Vaasa Energy</span></td><td class="mono tiny">+358 40 555 0121</td>
+            <td><span class="pill good st">BOOKED</span></td><td class="tiny muted">Finished</td><td class="mono tiny muted">5/5</td>
+            <td class="tiny muted">—</td><td class="mono" style="text-align:right">2</td><td class="tiny muted">28 Jul</td></tr>
+
+          <tr><td><span class="cb"></span></td>
+            <td><b>Antero Salo</b><div class="tiny muted">Plant Director</div></td>
+            <td class="muted"><span class="trunc">Kuopio Plastics</span></td><td class="mono tiny">+358 45 555 0166</td>
+            <td><span class="pill bad st">DEAD</span></td><td class="tiny muted">Not interested</td><td class="mono tiny muted">3/5</td>
+            <td class="tiny muted">—</td><td class="mono" style="text-align:right">2</td><td class="tiny muted">27 Jul</td></tr>
+
+          <tr><td><span class="cb"></span></td>
+            <td><b>Sanna Ojala</b><div class="tiny muted">Marketing Lead</div></td>
+            <td class="muted"><span class="trunc">Turku Marine</span></td><td class="mono tiny">+358 40 555 0188</td>
+            <td><span class="pill acc st">ACTIVE</span></td><td class="tiny"><span class="trunc">Standard Outbound</span></td><td class="mono tiny">1/5</td>
+            <td><span style="display:inline-flex;align-items:center;gap:6px" class="tiny"><span class="ti mail" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-mail"/></svg></span> Today</span></td>
+            <td class="mono" style="text-align:right">0</td><td class="tiny muted">4 Aug</td></tr>
+
+          <tr><td><span class="cb"></span></td>
+            <td><b>Heikki Rantanen</b><div class="tiny muted">CTO</div></td>
+            <td class="muted"><span class="trunc">Oulu Precision</span></td><td class="mono tiny">+358 50 555 0155</td>
+            <td><span class="pill st">NEW</span></td><td class="tiny muted">Not enrolled</td><td class="tiny muted">—</td>
+            <td><span class="btn sm">Enroll</span></td><td class="mono" style="text-align:right">0</td><td class="tiny muted">2 Aug</td></tr>
+
+          <tr><td><span class="cb"></span></td>
+            <td><b>Tuomas Heikkilä</b><div class="tiny muted">Operations Lead</div></td>
+            <td class="muted"><span class="trunc">Arctic Components</span></td><td class="mono tiny">+358 40 555 0103</td>
+            <td><span class="pill acc st">ACTIVE</span></td><td class="tiny"><span class="trunc">Standard Outbound</span></td><td class="mono tiny">2/5</td>
+            <td><span style="display:inline-flex;align-items:center;gap:6px" class="tiny"><span class="ti call" style="width:18px;height:18px"><svg class="ic s" style="width:11px;height:11px"><use href="#i-phone"/></svg></span> Today</span></td>
+            <td class="mono" style="text-align:right">1</td><td class="tiny muted">1 Aug</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tfootbar">
+        <span>Showing <b style="color:var(--ink)">1–8</b> of <b style="color:var(--ink)">63</b> matching prospects</span>
+        <span style="display:flex; align-items:center; gap:14px">
+          <span>Rows <span class="fdrop" style="padding:3px 8px">50 <svg class="ic s"><use href="#i-chev"/></svg></span></span>
+          <span class="pager">
+            <span class="pg off">‹</span>
+            <span class="pg on">1</span><span class="pg">2</span>
+            <span class="pg">›</span>
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>What changed, and why.</b>
+    The selection bar was dark navy, which made a <i>transient</i> state look like permanent chrome — dark is now reserved for the nav rail alone,
+    and selection reads as an accent-tinted band instead. Selected rows are also tinted, so the bar's count and the rows it refers to are visibly linked.
+    <br><br>
+    Square checkboxes for selection, round ticks for activity completion. Two different meanings should never share a shape.
+    <br><br>
+    <b>Applied filters carry the accent, idle ones stay quiet</b>, with a live match count and a "Clear 2 filters" affordance. On a 418-row table,
+    "why am I only seeing 63?" is the most common confusion, and this answers it without a click.
+    <br><br>
+    Next task became an icon plus a relative date rather than "Call · today", so the type is scannable at a glance and overdue reads red.
+    Titles sit under names, companies truncate rather than wrap, and the table ends in a real footer with counts and paging —
+    an infinite unlabelled list is where you lose track of how much list is left.
+  </div>
+</section>
+
+<!-- ================= 6. STATS ================= -->
+<section class="screen" id="s-stats">
+  <div class="screen-note">
+    <b>Stats.</b> Every number comes from the immutable Activity log, never from tasks. The formula tooltip isn't decoration —
+    in six months you won't remember what counted as a “connect”, and a metric you can't define is a metric you can't trust.
+  </div>
+
+  <div class="frame" data-nav="stats">
+    <div class="main">
+      <div class="bar1">
+        <h1>Stats</h1>
+        <span class="search"><svg class="ic s"><use href="#i-search"/></svg> Search prospects, companies, numbers…</span>
+      </div>
+      <div class="bar2">
+        <span class="fdrop on"><span class="k">Period</span> Last 30 days <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span class="fdrop"><span class="k">Sequence</span> All <svg class="ic s"><use href="#i-chev"/></svg></span>
+        <span style="margin-left:auto" class="btn">Export CSV</span>
+      </div>
+
+      <div class="stats-body">
+
+        <!-- ===== KPI row with sparklines ===== -->
+        <div class="sgrid g4">
+          <div class="scard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <span class="klab">Dials</span><span class="delta up">+12%</span>
+            </div>
+            <div class="kval" style="margin:6px 0 2px">412</div>
+            <div class="tiny muted">14.2 per working day</div>
+            <svg viewBox="0 0 130 38" style="width:100%;height:38px;margin-top:8px" preserveAspectRatio="none">
+              <defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F4BD9" stop-opacity=".26"/><stop offset="1" stop-color="#2F4BD9" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,28 L16,24 L32,27 L48,17 L65,21 L81,12 L97,15 L113,7 L130,10 L130,38 L0,38 Z" fill="url(#gA)"/>
+              <path d="M0,28 L16,24 L32,27 L48,17 L65,21 L81,12 L97,15 L113,7 L130,10" fill="none" stroke="#2F4BD9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div class="scard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <span class="klab">Connect rate</span><span class="delta up">+2.1pp</span>
+            </div>
+            <div class="kval" style="margin:6px 0 2px; color:var(--accent)">18.4%</div>
+            <div class="tiny muted">76 connects of 412 dials</div>
+            <svg viewBox="0 0 130 38" style="width:100%;height:38px;margin-top:8px" preserveAspectRatio="none">
+              <defs><linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E8A54" stop-opacity=".26"/><stop offset="1" stop-color="#0E8A54" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,30 L16,26 L32,28 L48,22 L65,25 L81,18 L97,20 L113,13 L130,11 L130,38 L0,38 Z" fill="url(#gB)"/>
+              <path d="M0,30 L16,26 L32,28 L48,22 L65,25 L81,18 L97,20 L113,13 L130,11" fill="none" stroke="#0E8A54" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div class="scard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <span class="klab">Meetings booked</span><span class="delta up">+3</span>
+            </div>
+            <div class="kval" style="margin:6px 0 2px; color:var(--good)">12</div>
+            <div class="tiny muted">15.8% of connects</div>
+            <svg viewBox="0 0 130 38" style="width:100%;height:38px;margin-top:8px" preserveAspectRatio="none">
+              <defs><linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8A33D" stop-opacity=".3"/><stop offset="1" stop-color="#E8A33D" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,32 L16,20 L32,25 L48,26 L65,14 L81,22 L97,16 L113,9 L130,12 L130,38 L0,38 Z" fill="url(#gC)"/>
+              <path d="M0,32 L16,20 L32,25 L48,26 L65,14 L81,22 L97,16 L113,9 L130,12" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div class="scard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <span class="klab">Dials per meeting</span><span class="delta up">−6</span>
+            </div>
+            <div class="kval" style="margin:6px 0 2px">34</div>
+            <div class="tiny muted">was 40 last period</div>
+            <svg viewBox="0 0 130 38" style="width:100%;height:38px;margin-top:8px" preserveAspectRatio="none">
+              <defs><linearGradient id="gD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FA0F2" stop-opacity=".32"/><stop offset="1" stop-color="#8FA0F2" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,8 L16,12 L32,10 L48,17 L65,15 L81,22 L97,19 L113,26 L130,24 L130,38 L0,38 Z" fill="url(#gD)"/>
+              <path d="M0,8 L16,12 L32,10 L48,17 L65,15 L81,22 L97,19 L113,26 L130,24" fill="none" stroke="#8FA0F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ===== main chart + gauge ===== -->
+        <div class="sgrid g2a">
+          <div class="scard">
+            <div class="scard-hd">
+              <div><h3>Dials &amp; connects</h3><div class="sub2">Last 12 weeks</div></div>
+              <div class="legend2">
+                <span><i style="background:#2F4BD9"></i>Dials</span>
+                <span><i style="background:#8FA0F2"></i>Connects</span>
+              </div>
+            </div>
+            <svg viewBox="0 0 620 232" style="width:100%;height:232px">
+              <g stroke="#EFF1F4" stroke-width="1">
+                <line x1="40" y1="200" x2="612" y2="200"/><line x1="40" y1="162" x2="612" y2="162"/>
+                <line x1="40" y1="124" x2="612" y2="124"/><line x1="40" y1="86" x2="612" y2="86"/>
+                <line x1="40" y1="48" x2="612" y2="48"/>
+              </g>
+              <g fill="#98A0AC" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">
+                <text x="31" y="204">0</text><text x="31" y="166">10</text><text x="31" y="128">20</text>
+                <text x="31" y="90">30</text><text x="31" y="52">40</text>
+              </g>
+              <g fill="#2F4BD9">
+                <rect x="46" y="93.6" width="13" height="106.4" rx="3"/><rect x="93.5" y="70.8" width="13" height="129.2" rx="3"/>
+                <rect x="141" y="82.2" width="13" height="117.8" rx="3"/><rect x="188.5" y="48" width="13" height="152" rx="3"/>
+                <rect x="236" y="101.2" width="13" height="98.8" rx="3"/><rect x="283.5" y="55.6" width="13" height="144.4" rx="3"/>
+                <rect x="331" y="40.4" width="13" height="159.6" rx="3"/><rect x="378.5" y="67" width="13" height="133" rx="3"/>
+                <rect x="426" y="32.8" width="13" height="167.2" rx="3"/><rect x="473.5" y="86" width="13" height="114" rx="3"/>
+                <rect x="521" y="51.8" width="13" height="148.2" rx="3"/><rect x="568.5" y="29" width="13" height="171" rx="3"/>
+              </g>
+              <g fill="#8FA0F2">
+                <rect x="61" y="181" width="13" height="19" rx="3"/><rect x="108.5" y="173.4" width="13" height="26.6" rx="3"/>
+                <rect x="156" y="177.2" width="13" height="22.8" rx="3"/><rect x="203.5" y="169.6" width="13" height="30.4" rx="3"/>
+                <rect x="251" y="184.8" width="13" height="15.2" rx="3"/><rect x="298.5" y="173.4" width="13" height="26.6" rx="3"/>
+                <rect x="346" y="165.8" width="13" height="34.2" rx="3"/><rect x="393.5" y="177.2" width="13" height="22.8" rx="3"/>
+                <rect x="441" y="169.6" width="13" height="30.4" rx="3"/><rect x="488.5" y="181" width="13" height="19" rx="3"/>
+                <rect x="536" y="173.4" width="13" height="26.6" rx="3"/><rect x="583.5" y="165.8" width="13" height="34.2" rx="3"/>
+              </g>
+              <g fill="#98A0AC" font-size="10" text-anchor="middle">
+                <text x="67" y="219">W1</text><text x="114.5" y="219">W2</text><text x="162" y="219">W3</text><text x="209.5" y="219">W4</text>
+                <text x="257" y="219">W5</text><text x="304.5" y="219">W6</text><text x="352" y="219">W7</text><text x="399.5" y="219">W8</text>
+                <text x="447" y="219">W9</text><text x="494.5" y="219">W10</text><text x="542" y="219">W11</text><text x="589.5" y="219">W12</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="scard" style="display:flex;flex-direction:column">
+            <div class="scard-hd"><div><h3>Who picks up</h3><div class="sub2">412 dials this period</div></div></div>
+            <svg viewBox="0 0 200 118" style="width:100%;max-width:230px;margin:4px auto 0">
+              <g fill="none" stroke-width="17" stroke-linecap="butt">
+                <path d="M18,100 A82,82 0 0 1 182,100" stroke="#EFF1F4"/>
+                <path d="M18,100 A82,82 0 0 1 182,100" stroke="#0E8A54" stroke-dasharray="47.4 258" stroke-dashoffset="0"/>
+                <path d="M18,100 A82,82 0 0 1 182,100" stroke="#8FA0F2" stroke-dasharray="19.3 258" stroke-dashoffset="-47.4"/>
+                <path d="M18,100 A82,82 0 0 1 182,100" stroke="#B9C3EE" stroke-dasharray="40 258" stroke-dashoffset="-66.7"/>
+                <path d="M18,100 A82,82 0 0 1 182,100" stroke="#D9DDE5" stroke-dasharray="149.5 258" stroke-dashoffset="-106.7"/>
+              </g>
+              <text x="100" y="88" text-anchor="middle" font-size="30" font-weight="700" fill="#1A1F28">18.4%</text>
+              <text x="100" y="106" text-anchor="middle" font-size="11" fill="#6B7280">reached the target</text>
+            </svg>
+            <div class="legend2" style="flex-direction:column;gap:7px;margin-top:14px">
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#0E8A54"></i>Spoke to them</span><b style="color:var(--ink)">76</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#8FA0F2"></i>Gatekeeper</span><b style="color:var(--ink)">31</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#B9C3EE"></i>Voicemail</span><b style="color:var(--ink)">64</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#D9DDE5"></i>No answer</span><b style="color:var(--ink)">241</b></span>
+            </div>
+            <div class="tip" style="margin-top:14px;font-size:10.5px;line-height:1.5">connect = connected + callback<br>+ booked + not_interested</div>
+          </div>
+        </div>
+
+        <!-- ===== funnel + donut ===== -->
+        <div class="sgrid g2a">
+          <div class="scard">
+            <div class="scard-hd">
+              <div><h3>Sequence funnel</h3><div class="sub2">Standard Outbound · 104 enrolled</div></div>
+              <span class="tagpill">Reached each step</span>
+            </div>
+            <svg viewBox="0 0 560 258" style="width:100%;height:258px">
+              <defs>
+                <linearGradient id="fg" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#2F4BD9"/><stop offset="1" stop-color="#6B82F0"/>
+                </linearGradient>
+              </defs>
+              <g fill="url(#fg)">
+                <polygon points="20,0 540,0 524,44 36,44" opacity="1"/>
+                <polygon points="36,50 524,50 483,94 77,94" opacity=".88"/>
+                <polygon points="77,100 483,100 444,144 116,144" opacity=".76"/>
+                <polygon points="116,150 444,150 415,194 145,194" opacity=".64"/>
+                <polygon points="145,200 415,200 415,244 145,244" opacity=".52"/>
+              </g>
+              <g fill="#fff" font-size="12.5" font-weight="600">
+                <text x="44" y="27">Personal email</text><text x="516" y="27" text-anchor="end">104</text>
+                <text x="60" y="77">Call attempt 1</text><text x="500" y="77" text-anchor="end">98</text>
+                <text x="100" y="127">Call attempt 2</text><text x="460" y="127" text-anchor="end">81</text>
+                <text x="138" y="177">Call attempt 3</text><text x="422" y="177" text-anchor="end">66</text>
+                <text x="167" y="227">Reply to chain</text><text x="393" y="227" text-anchor="end">54</text>
+              </g>
+              <g fill="#98A0AC" font-size="10.5" text-anchor="start">
+                <text x="548" y="77">−6%</text><text x="548" y="127">−17%</text>
+                <text x="548" y="177">−19%</text><text x="548" y="227">−18%</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="scard">
+            <div class="scard-hd"><div><h3>Where meetings come from</h3><div class="sub2">12 booked</div></div></div>
+            <svg viewBox="0 0 150 150" style="width:100%;max-width:172px;margin:0 auto;display:block">
+              <g transform="rotate(-90 75 75)" fill="none" stroke-width="24">
+                <circle cx="75" cy="75" r="52" stroke="#2F4BD9" stroke-dasharray="108.9 326.7" stroke-dashoffset="0"/>
+                <circle cx="75" cy="75" r="52" stroke="#5C74EE" stroke-dasharray="81.7 326.7" stroke-dashoffset="-108.9"/>
+                <circle cx="75" cy="75" r="52" stroke="#8FA0F2" stroke-dasharray="81.7 326.7" stroke-dashoffset="-190.6"/>
+                <circle cx="75" cy="75" r="52" stroke="#0E8A54" stroke-dasharray="54.5 326.7" stroke-dashoffset="-272.3"/>
+              </g>
+              <text x="75" y="72" text-anchor="middle" font-size="24" font-weight="700" fill="#1A1F28">12</text>
+              <text x="75" y="88" text-anchor="middle" font-size="10" fill="#6B7280">meetings</text>
+            </svg>
+            <div class="legend2" style="flex-direction:column;gap:7px;margin-top:14px">
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#2F4BD9"></i>Call attempt 1</span><b style="color:var(--ink)">4</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#5C74EE"></i>Call attempt 2</span><b style="color:var(--ink)">3</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#8FA0F2"></i>Call attempt 3</span><b style="color:var(--ink)">3</b></span>
+              <span style="display:flex;justify-content:space-between"><span><i style="background:#0E8A54"></i>Reply to chain</span><b style="color:var(--ink)">2</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== heatmap + ranked steps ===== -->
+        <div class="sgrid g2a">
+          <div class="scard">
+            <div class="scard-hd">
+              <div><h3>Calling consistency</h3><div class="sub2">Dials per weekday, last 13 weeks</div></div>
+              <div class="legend2" style="align-items:center">
+                <span>Less</span>
+                <span style="display:flex;gap:3px">
+                  <i style="background:#EFF1F4"></i><i style="background:#C4CEF8"></i><i style="background:#8FA0F2"></i><i style="background:#5C74EE"></i><i style="background:#2F4BD9"></i>
+                </span>
+                <span>More</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start">
+              <div class="hmlab"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+              <div class="hm" id="heatmap"></div>
+            </div>
+            <p class="tiny muted" style="margin-top:12px; line-height:1.55">
+              The pale column in week 8 is four days where prospecting stopped. Nothing else in the app surfaces that —
+              it doesn't show up as a bad rate, only as an absence.
+            </p>
+          </div>
+
+          <div class="scard">
+            <div class="scard-hd"><div><h3>Best performing steps</h3><div class="sub2">Meetings booked per 100 tasks</div></div></div>
+            <div class="rank">
+              <span class="rn">1</span>
+              <span>Reply to chain<div class="rbar"><i style="width:100%;background:#0E8A54"></i></div></span>
+              <b style="text-align:right">4.1</b>
+            </div>
+            <div class="rank">
+              <span class="rn">2</span>
+              <span>Call attempt 3<div class="rbar"><i style="width:86%;background:#2F4BD9"></i></div></span>
+              <b style="text-align:right">3.5</b>
+            </div>
+            <div class="rank">
+              <span class="rn">3</span>
+              <span>Call attempt 2<div class="rbar"><i style="width:79%;background:#5C74EE"></i></div></span>
+              <b style="text-align:right">3.2</b>
+            </div>
+            <div class="rank">
+              <span class="rn">4</span>
+              <span>Call attempt 1<div class="rbar"><i style="width:75%;background:#8FA0F2"></i></div></span>
+              <b style="text-align:right">3.0</b>
+            </div>
+            <div class="rank">
+              <span class="rn">5</span>
+              <span>Personal email<div class="rbar"><i style="width:6%;background:#B9C3EE"></i></div></span>
+              <b style="text-align:right">0.0</b>
+            </div>
+            <p class="tiny muted" style="margin-top:12px; line-height:1.55">
+              Late steps convert <i>better</i> per task, not worse — the people still in the sequence at step 4 are the ones
+              who haven't said no. This is the argument for never cutting the sequence short.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="screen-note" style="background:#F3F4F7;border-color:#D2D6DC">
+    <b>Charts over boxes, but only where a chart says something a number can't.</b>
+    The gauge exists because "18.4% connect rate" is meaningless without the shape of the other 81.6% — seeing no-answer dominate
+    tells you the fix is better direct-dial data, not a better opener. The funnel is a funnel because drop-off is a shape.
+    The heatmap exists to catch absence: a week you didn't prospect never shows up as a bad rate, only as a gap.
+    <br><br>
+    <b>Deltas next to every KPI.</b> A number with no comparison isn't information. "34 dials per meeting, was 40" is;
+    "34" on its own isn't. Note that a falling number gets the green treatment here — fewer dials per meeting is an improvement,
+    and colour should follow meaning rather than direction.
+    <br><br>
+    <b>The "best performing steps" panel is the one to act on.</b> Late steps convert better per task, not worse, because the people
+    still in the sequence at step 4 are the ones who haven't said no. That's the argument for never cutting a sequence short —
+    and it's invisible in the raw funnel, which only shows numbers falling.
+  </div>
+</section>
+
+</div>
+
+<script>
+  const NAV = [
+    ['today',     'i-today',  'Today'],
+    ['prospects', 'i-people', 'Prospects'],
+    ['sequences', 'i-seq',    'Sequences'],
+    ['stats',     'i-stats',  'Stats'],
+  ];
+  document.querySelectorAll('.frame[data-nav]').forEach(f => {
+    const active = f.dataset.nav;
+    const rail = document.createElement('div');
+    rail.className = 'rail';
+    rail.innerHTML =
+      '<div class="wordmark">CRM</div>' +
+      NAV.map(([k, ic, t]) =>
+        `<a href="#" class="${k === active ? 'on' : ''}" title="${t}"><svg class="ic"><use href="#${ic}"/></svg></a>`).join('') +
+      '<div class="spacer"></div>' +
+      '<a href="#" title="Settings"><svg class="ic"><use href="#i-gear"/></svg></a>';
+    f.prepend(rail);
+  });
+
+  // Calling-consistency heatmap: 13 weeks × 5 weekdays
+  (function () {
+    const el = document.getElementById('heatmap');
+    if (!el) return;
+    const scale = ['#EFF1F4', '#C4CEF8', '#8FA0F2', '#5C74EE', '#2F4BD9'];
+    // 0 = no dials, 4 = heaviest day. Week 8 (index 7) is the dead week.
+    const weeks = [
+      [2,3,2,4,1],[3,4,3,2,2],[2,2,3,3,1],[4,3,4,2,3],
+      [3,4,2,3,2],[2,3,3,4,1],[4,4,3,3,2],[0,0,0,1,0],
+      [1,2,3,2,1],[3,4,3,4,2],[4,3,4,3,3],[2,4,3,2,2],[3,4,4,3,1]
+    ];
+    el.innerHTML = weeks.map(w =>
+      '<div class="col">' + w.map(v =>
+        `<span class="cell" style="background:${scale[v]}"></span>`).join('') + '</div>'
+    ).join('');
+  })();
+
+  const tabs = document.getElementById('tabs');
+  const order = ['today','log','prospect','sequence','list','stats'];
+  tabs.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...tabs.children].forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('s-' + b.dataset.s).classList.add('active');
+    window.scrollTo(0, 0);
+  });
+  document.addEventListener('keydown', e => {
+    const cur = [...tabs.children].find(x => x.getAttribute('aria-selected') === 'true');
+    const i = order.indexOf(cur.dataset.s);
+    if (e.key === 'ArrowRight' && i < order.length - 1) tabs.children[i+1].click();
+    if (e.key === 'ArrowLeft'  && i > 0) tabs.children[i-1].click();
+  });
+</script>
+</body>
+</html>

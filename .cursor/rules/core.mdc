@@ -1,0 +1,21 @@
+---
+description: Core guardrails for the solo outbound CRM
+alwaysApply: true
+---
+
+# Core rules
+
+- Only `src/lib/sequence-engine.ts` may create, update or delete `Task` rows.
+  Never write task mutations in a page, component or action — actions call the engine.
+- `Activity` rows are append-only. Never update or delete one.
+- Calendar-day values (`Task.dueDate`) go through helpers in `src/lib/dates.ts`.
+  Never do raw `new Date()` arithmetic.
+- Mutations are Server Actions in `src/actions/`. Never create `src/app/api/` routes.
+- Reads happen in Server Components. Do not add React Query, tRPC, Redux or any
+  client-side store.
+- Keep files under 250 lines; extract a component rather than growing a page.
+- Protected — do not modify unless explicitly asked:
+  `prisma/schema.prisma`, `src/lib/sequence-engine.ts`, `src/lib/dates.ts`, `src/lib/stats.ts`
+- UI is shadcn/ui only. Never hand-roll a dropdown, dialog, popover or select.
+- Tailwind utilities only. No CSS modules, no styled-components, no inline style objects.
+- Do not invent colours. Use tokens from `src/app/globals.css` only; ask if a token is missing.

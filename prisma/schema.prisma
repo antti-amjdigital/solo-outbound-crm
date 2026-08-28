@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Prospect {
+  id          String          @id @default(cuid())
+  firstName   String
+  lastName    String?
+  company     String?
+  title       String?
+  email       String?
+  phone       String?
+  linkedin    String?
+  source      String?
+  timezone    String?
+  status      ProspectStatus  @default(NEW)
+  deadReason  String?
+  notes       Note[]
+  activities  Activity[]
+  enrollments Enrollment[]
+  tasks       Task[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status])
+}
+
+enum ProspectStatus {
+  NEW
+  ACTIVE
+  MEETING_BOOKED
+  WON
+  DEAD
+  PAUSED
+}
+
+model Sequence {
+  id          String        @id @default(cuid())
+  name        String
+  isActive    Boolean       @default(true)
+  steps       SequenceStep[]
+  enrollments Enrollment[]
+}
+
+model SequenceStep {
+  id         String   @id @default(cuid())
+  sequenceId String
+  sequence   Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  order      Int
+  type       StepType
+  label      String
+  delayDays  Int
+  template   String?
+
+  @@unique([sequenceId, order])
+}
+
+enum StepType {
+  EMAIL
+  CALL
+  EMAIL_REPLY
+  LINKEDIN
+  MANUAL
+}
+
+model Enrollment {
+  id               String      @id @default(cuid())
+  prospectId       String
+  sequenceId       String
+  prospect         Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  sequence         Sequence    @relation(fields: [sequenceId], references: [id])
+  currentStepOrder Int         @default(0)
+  state            EnrollState @default(RUNNING)
+  startedAt        DateTime    @default(now())
+  finishedAt       DateTime?
+  exitReason       String?
+  tasks            Task[]
+
+  @@index([state])
+}
+
+enum EnrollState {
+  RUNNING
+  PAUSED
+  FINISHED
+}
+
+model Task {
+  id           String      @id @default(cuid())
+  prospectId   String
+  enrollmentId String?
+  prospect     Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  enrollment   Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  type         StepType
+  label        String
+  stepOrder    Int?
+  dueDate      DateTime
+  status       TaskStatus  @default(OPEN)
+  completedAt  DateTime?
+  activityId   String?     @unique
+  createdAt    DateTime    @default(now())
+
+  @@index([status, dueDate])
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  SKIPPED
+  CANCELLED
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  prospectId  String
+  prospect    Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  type        ActivityType
+  outcome     CallOutcome?
+  stepOrder   Int?
+  sequenceId  String?
+  note        String?
+  durationSec Int?
+  occurredAt  DateTime     @default(now())
+
+  @@index([type, occurredAt])
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  EMAIL_REPLY_SENT
+  CALL
+  EMAIL_REPLY_RECEIVED
+  MEETING_BOOKED
+  NOTE
+  STATUS_CHANGE
+}
+
+enum CallOutcome {
+  NO_ANSWER
+  VOICEMAIL
+  GATEKEEPER
+  CONNECTED
+  CALLBACK_REQUESTED
+  MEETING_BOOKED
+  NOT_INTERESTED
+  WRONG_NUMBER
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  prospectId String
+  prospect   Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
