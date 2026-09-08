@@ -23,10 +23,20 @@ function activityIcon(a: Activity) {
   return StepType.MANUAL
 }
 
+function splitTaskLabel(label?: string): { name?: string; notes?: string } {
+  if (!label?.trim()) return {}
+  const nl = label.indexOf("\n")
+  if (nl < 0) return { name: label.trim() }
+  const name = label.slice(0, nl).trim()
+  const notes = label.slice(nl + 1).trim()
+  return { name: name || undefined, notes: notes || undefined }
+}
+
 function titleFor(a: Activity, taskLabel?: string): string {
-  const custom = taskLabel?.trim() || ""
-  const generic = custom === "Call" || custom === "Email" || custom === "To-do"
-  const name = custom && !generic ? custom : null
+  const { name: rawName } = splitTaskLabel(taskLabel)
+  const generic =
+    rawName === "Call" || rawName === "Email" || rawName === "To-do"
+  const name = rawName && !generic ? rawName : null
 
   switch (a.type) {
     case ActivityType.CALL:
@@ -40,6 +50,8 @@ function titleFor(a: Activity, taskLabel?: string): string {
     case ActivityType.MEETING_BOOKED:
       return name ? `${name} — Meeting booked` : "Meeting booked"
     case ActivityType.NOTE:
+      // Freeform notes (no linked task): show the body as the title.
+      if (!taskLabel) return a.note?.trim() || "Note added"
       return name ?? "Note added"
     case ActivityType.STATUS_CHANGE:
       return a.note?.startsWith("Status")
@@ -137,6 +149,18 @@ function ActivityRow({
   source: string | null
   taskLabel?: string
 }) {
+  const { notes: taskNotes } = splitTaskLabel(taskLabel)
+  const activityNote =
+    a.type === ActivityType.STATUS_CHANGE
+      ? null
+      : a.type === ActivityType.NOTE && !taskLabel
+        ? null // already used as the title for freeform notes
+        : a.note?.trim() || null
+  const detailParts = [taskNotes, activityNote].filter(
+    (part, i, arr): part is string =>
+      Boolean(part) && arr.indexOf(part) === i,
+  )
+
   return (
     <div className="grid grid-cols-[30px_1fr_auto] items-start gap-3 py-2.5">
       <HistoryIcon activity={a} />
@@ -156,11 +180,14 @@ function ActivityRow({
             Step {a.stepOrder}
           </div>
         )}
-        {a.note && a.type !== ActivityType.STATUS_CHANGE && (
-          <div className="mt-1 text-[13px] leading-relaxed text-[#64748b]">
-            {a.note}
+        {detailParts.map((part) => (
+          <div
+            key={part}
+            className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[#64748b]"
+          >
+            {part}
           </div>
-        )}
+        ))}
       </div>
       <time
         dateTime={a.occurredAt.toISOString()}

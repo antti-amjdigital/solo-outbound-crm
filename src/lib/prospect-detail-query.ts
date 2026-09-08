@@ -173,9 +173,9 @@ export async function getProspectDetail(
   })
   const historyTaskLabels: Record<string, string> = {}
   for (const t of completedLinked) {
-    if (!t.activityId) continue
-    const name = t.label.split("\n")[0]?.trim()
-    if (name) historyTaskLabels[t.activityId] = name
+    if (!t.activityId || !t.label.trim()) continue
+    // Full label: first line is the name, remaining lines are task notes.
+    historyTaskLabels[t.activityId] = t.label
   }
 
   const sequences = await db.sequence.findMany({
