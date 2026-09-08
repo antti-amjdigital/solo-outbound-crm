@@ -23,20 +23,24 @@ function activityIcon(a: Activity) {
   return StepType.MANUAL
 }
 
-function titleFor(a: Activity): string {
+function titleFor(a: Activity, taskLabel?: string): string {
+  const custom = taskLabel?.trim() || ""
+  const generic = custom === "Call" || custom === "Email" || custom === "To-do"
+  const name = custom && !generic ? custom : null
+
   switch (a.type) {
     case ActivityType.CALL:
-      return `Call${a.outcome ? ` — ${OUTCOME_LABEL[a.outcome]}` : ""}`
+      return `${name ?? "Call"}${a.outcome ? ` — ${OUTCOME_LABEL[a.outcome]}` : ""}`
     case ActivityType.EMAIL_SENT:
-      return "Email sent"
+      return name ?? "Email sent"
     case ActivityType.EMAIL_REPLY_SENT:
-      return "Reply sent"
+      return name ?? "Reply sent"
     case ActivityType.EMAIL_REPLY_RECEIVED:
       return REMOVED_FROM_SEQUENCE_HISTORY_LABEL
     case ActivityType.MEETING_BOOKED:
-      return "Meeting booked"
+      return name ? `${name} — Meeting booked` : "Meeting booked"
     case ActivityType.NOTE:
-      return "Note added"
+      return name ?? "Note added"
     case ActivityType.STATUS_CHANGE:
       return a.note?.startsWith("Status")
         ? a.note
@@ -127,9 +131,11 @@ function HistoryIcon({ activity }: { activity: Activity }) {
 function ActivityRow({
   activity: a,
   source,
+  taskLabel,
 }: {
   activity: Activity
   source: string | null
+  taskLabel?: string
 }) {
   return (
     <div className="grid grid-cols-[30px_1fr_auto] items-start gap-3 py-2.5">
@@ -137,7 +143,7 @@ function ActivityRow({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[14px] font-semibold text-[#0f172a]">
-            {titleFor(a)}
+            {titleFor(a, taskLabel)}
           </span>
           {isCreationEvent(a) && source && (
             <span className="rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[11px] font-medium text-[#64748b]">
@@ -169,9 +175,11 @@ function ActivityRow({
 export function HistoryList({
   history,
   source,
+  taskLabels = {},
 }: {
   history: Activity[]
   source: string | null
+  taskLabels?: Record<string, string>
 }) {
   const todayKey = useMemo(
     () => new Date().toLocaleDateString("en-CA", { timeZone: TZ }),
@@ -201,6 +209,7 @@ export function HistoryList({
               key={activity.id}
               activity={activity}
               source={source}
+              taskLabel={taskLabels[activity.id]}
             />
           ))}
         </div>

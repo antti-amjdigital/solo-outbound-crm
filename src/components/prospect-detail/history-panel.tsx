@@ -6,12 +6,14 @@ import { type Activity } from "@prisma/client"
 export function HistoryPanel({
   prospectId,
   history,
+  taskLabels,
   counts,
   filter,
   source,
 }: {
   prospectId: string
   history: Activity[]
+  taskLabels: Record<string, string>
   counts: Record<HistoryFilter, number>
   filter: HistoryFilter
   source: string | null
@@ -27,7 +29,11 @@ export function HistoryPanel({
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <HistoryList history={history} source={source} />
+        <HistoryList
+          history={history}
+          source={source}
+          taskLabels={taskLabels}
+        />
       </div>
     </div>
   )

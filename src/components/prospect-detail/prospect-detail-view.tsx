@@ -53,6 +53,7 @@ export function ProspectDetailView({ data }: { data: ProspectDetail }) {
             <HistoryPanel
               prospectId={data.prospect.id}
               history={data.history}
+              taskLabels={data.historyTaskLabels}
               counts={data.historyCounts}
               filter={data.historyFilter}
               source={data.prospect.source}

@@ -53,6 +53,8 @@ export type ProspectDetail = {
   emails: number
   daysInSequence: number | null
   history: Activity[]
+  /** Completed-task display names keyed by activity id (custom task name). */
+  historyTaskLabels: Record<string, string>
   historyCounts: Record<HistoryFilter, number>
   historyFilter: HistoryFilter
   sequences: { id: string; name: string }[]
@@ -165,6 +167,17 @@ export async function getProspectDetail(
       ? prospect.activities
       : prospect.activities.filter((a) => historyBucket(a) === historyFilter)
 
+  const completedLinked = await db.task.findMany({
+    where: { prospectId: id, activityId: { not: null } },
+    select: { activityId: true, label: true },
+  })
+  const historyTaskLabels: Record<string, string> = {}
+  for (const t of completedLinked) {
+    if (!t.activityId) continue
+    const name = t.label.split("\n")[0]?.trim()
+    if (name) historyTaskLabels[t.activityId] = name
+  }
+
   const sequences = await db.sequence.findMany({
     where: { isActive: true },
     select: { id: true, name: true },
@@ -230,6 +243,7 @@ export async function getProspectDetail(
     emails: emails.length,
     daysInSequence,
     history,
+    historyTaskLabels,
     historyCounts: counts,
     historyFilter,
     sequences,
