@@ -16,7 +16,6 @@ export type QueueRangeFilter =
 export type TodayQueueFilters = {
   type: QueueTypeFilter
   range: QueueRangeFilter
-  q: string
   from?: string
   to?: string
 }
@@ -98,7 +97,6 @@ export function parseQueueFilters(
     range: ranges.includes(rangeRaw as QueueRangeFilter)
       ? (rangeRaw as QueueRangeFilter)
       : "today",
-    q: one("q")?.trim() ?? "",
     from: one("from"),
     to: one("to"),
   }

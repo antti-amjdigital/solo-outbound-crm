@@ -9,8 +9,10 @@ import {
 import { appToday, formatCalendarDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import {
+  addCalendarDays,
   appDayBounds,
   dueRange,
+  mondayOf,
   parseQueueFilters,
   TYPE_MAP,
   type QueueTypeFilter,
@@ -32,6 +34,7 @@ export type TodayQueueItem = {
   completedAt: Date | null
   stepOrder: number | null
   template: string | null
+  hasActiveSequence: boolean
   prospect: Pick<
     Prospect,
     "id" | "firstName" | "lastName" | "company" | "email" | "phone" | "linkedin"
@@ -48,12 +51,20 @@ export type TodayQueueCounts = {
   manual: number
   overdue: number
   today: number
+  tomorrow: number
+  week: number
+}
+
+export type TodayProgress = {
+  done: number
+  total: number
 }
 
 export type TodayQueueResult = {
   open: TodayQueueItem[]
   done: TodayQueueItem[]
   counts: TodayQueueCounts
+  todayProgress: TodayProgress
   filters: TodayQueueFilters
 }
 
@@ -81,21 +92,6 @@ function matchesType(type: StepType, filter: QueueTypeFilter): boolean {
   return type === TYPE_MAP[filter]
 }
 
-function matchesSearch(
-  task: { label: string; prospect: TodayQueueItem["prospect"] },
-  q: string,
-): boolean {
-  if (!q) return true
-  const name = [task.prospect.firstName, task.prospect.lastName]
-    .filter(Boolean)
-    .join(" ")
-  const hay = [task.label, name, task.prospect.company, task.prospect.email, task.prospect.phone]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-  return hay.includes(q.toLowerCase())
-}
-
 function toItem(task: TaskRow): TodayQueueItem {
   const step = task.enrollment?.sequence.steps.find((s) => s.order === task.stepOrder)
   return {
@@ -117,6 +113,7 @@ function toItem(task: TaskRow): TodayQueueItem {
       linkedin: task.prospect.linkedin,
     },
     lastOutcome: task.prospect.activities[0]?.outcome ?? null,
+    hasActiveSequence: task.enrollmentId != null,
   }
 }
 
@@ -182,6 +179,11 @@ export async function getTodayQueue(
     return true
   }
 
+  const tomorrow = addCalendarDays(today, 1)
+  const weekEnd = addCalendarDays(mondayOf(today), 6)
+  const todayKey = formatCalendarDate(today)
+  const tomorrowKey = formatCalendarDate(tomorrow)
+
   const rangeForCounts = openItems.filter((t) => inRange(t.dueDate))
   const counts: TodayQueueCounts = {
     all: rangeForCounts.length,
@@ -191,19 +193,29 @@ export async function getTodayQueue(
     linkedin: 0,
     manual: 0,
     overdue: openItems.filter((t) => t.dueDate.getTime() < today.getTime()).length,
-    today: openItems.filter(
-      (t) => formatCalendarDate(t.dueDate) === formatCalendarDate(today),
+    today: openItems.filter((t) => formatCalendarDate(t.dueDate) === todayKey).length,
+    tomorrow: openItems.filter((t) => formatCalendarDate(t.dueDate) === tomorrowKey).length,
+    week: openItems.filter(
+      (t) => t.dueDate.getTime() >= mondayOf(today).getTime() && t.dueDate.getTime() <= weekEnd.getTime(),
     ).length,
   }
   for (const t of rangeForCounts) counts[typeBucket(t.type)] += 1
 
   const open = openItems.filter(
-    (t) =>
-      matchesType(t.type, filters.type) && inRange(t.dueDate) && matchesSearch(t, filters.q),
+    (t) => matchesType(t.type, filters.type) && inRange(t.dueDate),
   )
   const done = (doneRows as unknown as TaskRow[])
     .map(toItem)
-    .filter((t) => matchesType(t.type, filters.type) && matchesSearch(t, filters.q))
+    .filter((t) => matchesType(t.type, filters.type))
 
-  return { open, done, counts, filters }
+  const todayOpenCount = openItems.filter(
+    (t) => formatCalendarDate(t.dueDate) === todayKey,
+  ).length
+  const todayDoneCount = (doneRows as unknown as TaskRow[]).length
+  const todayProgress: TodayProgress = {
+    done: todayDoneCount,
+    total: todayOpenCount + todayDoneCount,
+  }
+
+  return { open, done, counts, todayProgress, filters }
 }

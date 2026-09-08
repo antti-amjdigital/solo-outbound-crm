@@ -235,6 +235,39 @@ export async function skipTask(taskId: string, client: Client = defaultDb) {
   })
 }
 
+const AD_HOC_TYPES = new Set<StepType>([
+  StepType.CALL,
+  StepType.EMAIL,
+  StepType.MANUAL,
+])
+
+export async function createAdHocTask(
+  prospectId: string,
+  input: { type: StepType; label: string; dueDate: Date },
+  client: Client = defaultDb,
+) {
+  if (!AD_HOC_TYPES.has(input.type)) {
+    throw new Error("Invalid ad-hoc task type")
+  }
+  const label = input.label.trim()
+  if (!label) throw new Error("Task label is required")
+
+  const prospect = await client.prospect.findUnique({ where: { id: prospectId } })
+  if (!prospect) throw new Error("Prospect not found")
+
+  return client.task.create({
+    data: {
+      prospectId,
+      enrollmentId: null,
+      stepOrder: null,
+      type: input.type,
+      label,
+      dueDate: toCalendarDate(input.dueDate),
+      status: TaskStatus.OPEN,
+    },
+  })
+}
+
 export async function rescheduleTask(
   taskId: string,
   dueDate: Date,

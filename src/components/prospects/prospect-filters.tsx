@@ -26,8 +26,6 @@ type Props = {
   filters: ProspectListFilters
   sequences: { id: string; name: string }[]
   sources: string[]
-  matchCount: number
-  totalUnfiltered: number
 }
 
 function baseParams(f: ProspectListFilters): Record<string, string | undefined> {
@@ -43,13 +41,48 @@ function baseParams(f: ProspectListFilters): Record<string, string | undefined> 
   }
 }
 
-export function ProspectFilters({
-  filters,
-  sequences,
-  sources,
-  matchCount,
-  totalUnfiltered,
-}: Props) {
+function DownloadIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+}
+
+function FunnelIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  )
+}
+
+const secondaryBtn =
+  "h-[38px] gap-2 rounded-lg border-stats-picker-line bg-white px-4 text-[13px] font-semibold text-stats-secondary hover:bg-stats-canvas"
+
+export function ProspectFilters({ filters, sequences, sources }: Props) {
   const router = useRouter()
   const base = baseParams(filters)
   const count = activeFilterCount(filters)
@@ -75,33 +108,39 @@ export function ProspectFilters({
         : "None"
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-      <AddProspectDialog />
+    <div className="flex items-center gap-2.5 px-0">
+      <AddProspectDialog
+        triggerClassName="h-[38px] rounded-lg bg-stats-indigo-700 px-[18px] text-[14px] font-semibold text-white hover:bg-stats-indigo-900"
+      />
       <Button
-        size="sm"
         variant="outline"
         nativeButton={false}
         render={<Link href="/import" />}
+        className={secondaryBtn}
       >
+        <DownloadIcon />
         Import CSV
       </Button>
+
+      <div className="ml-auto" />
 
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <Button
               variant="outline"
-              size="sm"
               className={cn(
-                "font-normal",
-                count > 0 && "border-accent-line bg-accent-soft text-primary",
+                secondaryBtn,
+                count > 0 &&
+                  "border-stats-indigo-200 bg-[#eef2ff] text-stats-indigo-700",
               )}
             />
           }
         >
+          <FunnelIcon />
           Filter{count > 0 ? ` (${count})` : ""}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-44">
+        <DropdownMenuContent align="end" className="min-w-44">
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <span className="text-dim">Status</span>
@@ -180,17 +219,13 @@ export function ProspectFilters({
           {count > 0 && (
             <DropdownMenuItem
               onClick={() => router.push("/prospects")}
-              className="mt-1 text-primary"
+              className="mt-1 text-stats-indigo-700"
             >
               Clear {count} {count === 1 ? "filter" : "filters"}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <span className="ml-auto text-[11px] text-dim">
-        Showing {matchCount} of {totalUnfiltered} prospects
-      </span>
     </div>
   )
 }

@@ -14,8 +14,17 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { createProspectAction } from "@/actions/prospects"
+import { cn } from "@/lib/utils"
 
-export function AddProspectDialog() {
+type Props = {
+  triggerClassName?: string
+  triggerLabel?: string
+}
+
+export function AddProspectDialog({
+  triggerClassName,
+  triggerLabel = "Add prospect",
+}: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pending, start] = useTransition()
@@ -34,7 +43,18 @@ export function AddProspectDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>Add prospect</DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button
+            className={cn(
+              "h-[38px] rounded-lg bg-stats-indigo-700 px-[18px] text-[14px] font-semibold text-white hover:bg-stats-indigo-900",
+              triggerClassName,
+            )}
+          />
+        }
+      >
+        {triggerLabel}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add prospect</DialogTitle>
@@ -66,6 +86,7 @@ export function AddProspectDialog() {
           </Button>
           <Button
             disabled={pending || !form.firstName.trim()}
+            className="bg-stats-indigo-700 hover:bg-stats-indigo-900"
             onClick={() => {
               start(async () => {
                 const res = await createProspectAction(form)

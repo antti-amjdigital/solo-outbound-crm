@@ -14,6 +14,16 @@ import {
   type HistoryFilter,
 } from "@/lib/prospect-filters"
 
+export type OpenTaskItem = {
+  id: string
+  type: StepType
+  label: string
+  dueDate: Date
+  stepOrder: number | null
+  template: string | null
+  hasActiveSequence: boolean
+}
+
 export type ProspectDetail = {
   prospect: Prospect
   notes: Note[]
@@ -27,14 +37,12 @@ export type ProspectDetail = {
     exitReason: string | null
     startedAt: Date
   } | null
-  openTask: {
-    id: string
-    type: StepType
-    label: string
-    dueDate: Date
-    stepOrder: number | null
-    template: string | null
-  } | null
+  /** Primary focus task — earliest due today/overdue, else earliest upcoming. */
+  openTask: OpenTaskItem | null
+  openTasks: {
+    dueToday: OpenTaskItem[]
+    upcoming: OpenTaskItem[]
+  }
   lastCallOutcome: {
     outcome: string
     occurredAt: Date
@@ -91,18 +99,41 @@ export async function getProspectDetail(
       tasks: {
         where: { status: TaskStatus.OPEN },
         orderBy: { dueDate: "asc" },
-        take: 1,
       },
     },
   })
   if (!prospect) return null
 
   const enr = prospect.enrollments[0] ?? null
-  const open = prospect.tasks[0] ?? null
-  const step =
-    open?.stepOrder != null
-      ? enr?.sequence.steps.find((s) => s.order === open.stepOrder)
-      : null
+
+  function toOpenTask(task: {
+    id: string
+    type: StepType
+    label: string
+    dueDate: Date
+    stepOrder: number | null
+    enrollmentId: string | null
+  }): OpenTaskItem {
+    const step =
+      task.stepOrder != null
+        ? enr?.sequence.steps.find((s) => s.order === task.stepOrder)
+        : null
+    return {
+      id: task.id,
+      type: task.type,
+      label: task.label,
+      dueDate: task.dueDate,
+      stepOrder: task.stepOrder,
+      template: step?.template ?? null,
+      hasActiveSequence: task.enrollmentId != null,
+    }
+  }
+
+  const allOpen = prospect.tasks.map(toOpenTask)
+  const today = appToday()
+  const dueToday = allOpen.filter((t) => t.dueDate.getTime() <= today.getTime())
+  const upcoming = allOpen.filter((t) => t.dueDate.getTime() > today.getTime())
+  const open = dueToday[0] ?? upcoming[0] ?? null
 
   const calls = prospect.activities.filter((a) => a.type === ActivityType.CALL)
   const connects = calls.filter(
@@ -185,16 +216,8 @@ export async function getProspectDetail(
           startedAt: enr.startedAt,
         }
       : null,
-    openTask: open
-      ? {
-          id: open.id,
-          type: open.type,
-          label: open.label,
-          dueDate: open.dueDate,
-          stepOrder: open.stepOrder,
-          template: step?.template ?? null,
-        }
-      : null,
+    openTask: open,
+    openTasks: { dueToday, upcoming },
     lastCallOutcome: lastCall?.outcome
       ? {
           outcome: lastCall.outcome,

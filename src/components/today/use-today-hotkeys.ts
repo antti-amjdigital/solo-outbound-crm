@@ -120,20 +120,6 @@ export function useTodayHotkeys({
   )
 
   useHotkeys(
-    "/",
-    (e) => {
-      e.preventDefault()
-      const el = document.getElementById("today-search")
-      if (el instanceof HTMLInputElement) {
-        el.focus()
-        el.select()
-      }
-    },
-    { enabled: !noteOpen },
-    [noteOpen],
-  )
-
-  useHotkeys(
     "1,2,3,4,5,6,7,8",
     (e) => {
       if (!selected || selected.type !== StepType.CALL) return

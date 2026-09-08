@@ -42,7 +42,7 @@ function Section({ children }: { children: React.ReactNode }) {
 }
 
 export function DetailSidePanels({ data }: { data: ProspectDetail }) {
-  const { prospect, notes, dials, connects, emails, daysInSequence } = data
+  const { prospect, notes } = data
   const router = useRouter()
   const [pending, start] = useTransition()
   const [editing, setEditing] = useState(false)
@@ -115,24 +115,6 @@ export function DetailSidePanels({ data }: { data: ProspectDetail }) {
           </ContactRow>
         )}
       </div>
-
-      <Section>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-          {(
-            [
-              ["Dials", dials],
-              ["Connects", connects],
-              ["Emails", emails],
-              ["In sequence", daysInSequence != null ? `${daysInSequence}d` : "—"],
-            ] as const
-          ).map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between gap-2">
-              <span className="text-dim">{k}</span>
-              <span className="font-mono text-[13px] font-semibold">{v}</span>
-            </div>
-          ))}
-        </div>
-      </Section>
 
       <Section>
         <div className="mb-2 flex items-center justify-between gap-2">

@@ -2,7 +2,7 @@ import { StepType } from "@prisma/client"
 import { cn } from "@/lib/utils"
 
 const iconClass =
-  "size-3.5 fill-none stroke-current [stroke-width:1.9] [stroke-linecap:round] [stroke-linejoin:round]"
+  "size-[13px] shrink-0 fill-none stroke-current [stroke-width:2] [stroke-linecap:round] [stroke-linejoin:round]"
 
 function PhoneIcon() {
   return (
@@ -30,6 +30,24 @@ function ReplyIcon() {
   )
 }
 
+function LinkedInIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className={iconClass} aria-hidden>
+      <rect x="2" y="2" width="20" height="20" rx="2" />
+      <path d="M8 11v5M8 8v.01M12 16v-5M12 11a2 2 0 1 1 4 0v5" />
+    </svg>
+  )
+}
+
+function ManualIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className={iconClass} aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  )
+}
+
 const STYLES: Record<StepType, string> = {
   CALL: "bg-accent-soft text-primary",
   EMAIL: "bg-good-soft text-good",
@@ -38,23 +56,46 @@ const STYLES: Record<StepType, string> = {
   MANUAL: "bg-secondary text-dim",
 }
 
-export function TypeIcon({ type }: { type: StepType }) {
+type Props = {
+  type: StepType
+  variant?: "boxed" | "inline"
+  className?: string
+}
+
+export function TypeIcon({ type, variant = "boxed", className }: Props) {
+  const icon =
+    type === StepType.CALL ? (
+      <PhoneIcon />
+    ) : type === StepType.EMAIL ? (
+      <MailIcon />
+    ) : type === StepType.EMAIL_REPLY ? (
+      <ReplyIcon />
+    ) : type === StepType.LINKEDIN ? (
+      <LinkedInIcon />
+    ) : (
+      <ManualIcon />
+    )
+
+  if (variant === "inline") {
+    return (
+      <span
+        className={cn("inline-flex shrink-0 text-[#4f46e5]", className)}
+        aria-hidden
+      >
+        {icon}
+      </span>
+    )
+  }
+
   return (
     <span
       className={cn(
         "inline-flex size-[22px] shrink-0 items-center justify-center rounded",
         STYLES[type],
+        className,
       )}
     >
-      {type === StepType.CALL && <PhoneIcon />}
-      {type === StepType.EMAIL && <MailIcon />}
-      {type === StepType.EMAIL_REPLY && <ReplyIcon />}
-      {type === StepType.LINKEDIN && (
-        <span className="text-[10px] font-bold leading-none">in</span>
-      )}
-      {type === StepType.MANUAL && (
-        <span className="text-[10px] font-bold leading-none">M</span>
-      )}
+      {icon}
     </span>
   )
 }

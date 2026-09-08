@@ -1,25 +1,18 @@
 "use client"
 
-import { useOptimistic, useState, useTransition } from "react"
-import { CallOutcome, StepType, TaskStatus } from "@prisma/client"
-import Link from "next/link"
+import { useMemo, useOptimistic, useState, useTransition } from "react"
+import { CallOutcome, TaskStatus } from "@prisma/client"
 import { toast } from "sonner"
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { QueueRow } from "@/components/today/queue-row"
+import { groupOverdue } from "@/components/today/queue-overdue-groups"
+import { QueueTaskRow } from "@/components/today/queue-task-row"
 import { QueueNoteDialog } from "@/components/today/queue-note-dialog"
 import { useTodayHotkeys } from "@/components/today/use-today-hotkeys"
 import { waitForUndo } from "@/components/today/undo-toast"
 import { OUTCOME_LABEL, prospectDisplayName } from "@/components/today/labels"
 import { completeTaskAction, snoozeTaskAction } from "@/actions/tasks"
-import type { TodayQueueItem } from "@/lib/queries"
+import type { QueueRangeFilter } from "@/lib/queue-filters"
+import type { TodayProgress, TodayQueueItem } from "@/lib/queries"
 
-/** Match CSS collapse duration — keep snappy. */
 const EXIT_MS = 220
 
 type QueueState = { open: TodayQueueItem[]; done: TodayQueueItem[] }
@@ -58,9 +51,13 @@ function sleep(ms: number) {
 export function TodayQueue({
   open: initialOpen,
   done: initialDone,
+  range,
+  todayProgress,
 }: {
   open: TodayQueueItem[]
   done: TodayQueueItem[]
+  range: QueueRangeFilter
+  todayProgress: TodayProgress
 }) {
   const [optimistic, dispatch] = useOptimistic(
     { open: initialOpen, done: initialDone },
@@ -75,6 +72,18 @@ export function TodayQueue({
   const [noteOpen, setNoteOpen] = useState(false)
   const [exitingIds, setExitingIds] = useState<ReadonlySet<string>>(
     () => new Set(),
+  )
+
+  const isTodayView = range === "today"
+  const completedItems = isTodayView ? optimistic.done : []
+  const progressPct =
+    todayProgress.total > 0
+      ? Math.round((todayProgress.done / todayProgress.total) * 100)
+      : 0
+
+  const overdueGroups = useMemo(
+    () => (range === "overdue" ? groupOverdue(optimistic.open) : []),
+    [range, optimistic.open],
   )
 
   function selectNext(afterId: string) {
@@ -166,69 +175,94 @@ export function TodayQueue({
   })
 
   const selected = optimistic.open.find((t) => t.id === selectedId)
-  const rows = [...optimistic.open, ...optimistic.done]
+  const hasOpen = optimistic.open.length > 0
+  const hasCompleted = completedItems.length > 0
+  const emptyToday = isTodayView && todayProgress.total === 0
+  const allDoneToday = isTodayView && !hasOpen && hasCompleted
 
-  if (rows.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-16 text-center">
-        <p className="text-sm font-medium">Queue is clear</p>
-        <p className="text-xs text-dim">
-          Enroll new prospects to keep the pipeline moving.
-        </p>
-        <Link
-          href="/prospects?status=NEW"
-          className="mt-2 text-sm font-medium text-primary hover:underline"
-        >
-          View un-enrolled prospects →
-        </Link>
-      </div>
-    )
+  const rowProps = {
+    selectedId,
+    exitingIds,
+    popoverId,
+    snoozeId,
+    setSelectedId,
+    setPopoverId,
+    setSnoozeId,
+    complete,
+    snooze,
   }
 
   return (
     <>
-      <Table className="text-[12.5px]">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-11">Done</TableHead>
-            <TableHead>Subject</TableHead>
-            <TableHead className="w-40">Prospect</TableHead>
-            <TableHead className="w-44">Company</TableHead>
-            <TableHead className="w-44">Phone / Email</TableHead>
-            <TableHead className="w-32">Last outcome</TableHead>
-            <TableHead className="w-24 text-right" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((item) => (
-            <QueueRow
-              key={item.id}
-              item={item}
-              selected={
-                selectedId === item.id && item.status === TaskStatus.OPEN
-              }
-              exiting={exitingIds.has(item.id)}
-              popoverOpen={popoverId === item.id}
-              snoozeOpen={snoozeId === item.id}
-              onSelect={() => setSelectedId(item.id)}
-              onPopoverOpenChange={(open) => {
-                setPopoverId(open ? item.id : null)
-                if (open) setSelectedId(item.id)
-              }}
-              onSnoozeOpenChange={(open) => {
-                setSnoozeId(open ? item.id : null)
-                if (open) setSelectedId(item.id)
-              }}
-              onComplete={complete}
-              onSnooze={snooze}
-              showSnooze={
-                item.type !== StepType.EMAIL &&
-                item.type !== StepType.EMAIL_REPLY
-              }
-            />
-          ))}
-        </TableBody>
-      </Table>
+      <section className="overflow-hidden rounded-xl border border-[#e8edf4] bg-white">
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3.5">
+          <h2 className="text-[15px] font-bold text-[#0f172a]">
+            {allDoneToday ? "All done for today" : "To do"}
+          </h2>
+          {isTodayView && !emptyToday ? (
+            <>
+              <span className="text-[13px] text-[#94a3b8]">
+                {todayProgress.done} of {todayProgress.total} done today
+              </span>
+              <div
+                className="h-[5px] w-[120px] overflow-hidden rounded-[3px] bg-[#f1f5f9]"
+                role="progressbar"
+                aria-valuenow={todayProgress.done}
+                aria-valuemin={0}
+                aria-valuemax={todayProgress.total}
+              >
+                <div
+                  className="h-full rounded-[3px] bg-[#4f46e5] transition-[width] duration-200"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </>
+          ) : null}
+        </header>
+
+        {emptyToday ? (
+          <p className="px-4 py-8 text-[14px] text-[#64748b]">No tasks for today</p>
+        ) : (
+          <div role="table">
+            {range === "overdue" && overdueGroups.length > 0
+              ? overdueGroups.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-4 pb-1 pt-2 text-[11px] font-medium tracking-[0.8px] text-[#94a3b8] uppercase">
+                      {group.label}
+                    </div>
+                    {group.items.map((item) => (
+                      <QueueTaskRow key={item.id} item={item} {...rowProps} />
+                    ))}
+                  </div>
+                ))
+              : optimistic.open.map((item) => (
+                  <QueueTaskRow key={item.id} item={item} {...rowProps} />
+                ))}
+
+            {isTodayView && hasCompleted ? (
+              <div className="pb-2 pt-1">
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <span className="text-[11px] font-medium tracking-[0.8px] text-[#94a3b8] uppercase">
+                    COMPLETED
+                  </span>
+                  <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-[#64748b]">
+                    {completedItems.length}
+                  </span>
+                </div>
+                {completedItems.map((item) => (
+                  <QueueTaskRow key={item.id} item={item} done {...rowProps} />
+                ))}
+              </div>
+            ) : null}
+
+            {!hasOpen && !hasCompleted && !emptyToday ? (
+              <p className="px-4 py-8 text-[14px] text-[#64748b]">
+                No tasks in this range
+              </p>
+            ) : null}
+          </div>
+        )}
+      </section>
 
       <QueueNoteDialog
         open={noteOpen}

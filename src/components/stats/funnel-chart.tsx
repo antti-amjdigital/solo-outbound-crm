@@ -1,121 +1,167 @@
-import type { FunnelStep } from "@/lib/stats"
+import Link from "next/link"
+import { ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  MetricNum,
+  StatsCard,
+  StatsEmptyBody,
+} from "@/components/stats/stats-card"
+import type { FunnelStages } from "@/lib/stats-constants"
+import { statsHref, type StatsFilters } from "@/lib/stats-filters"
 
-/** Trapezoid funnel — geometry from wireframes.html id="s-stats". */
-export function FunnelChart({
-  funnel,
-  sequenceName,
-  enrolled,
-}: {
-  funnel: FunnelStep[]
+const STAGE_FILLS = [
+  "var(--stats-indigo-200)",
+  "var(--stats-indigo-300)",
+  "var(--stats-indigo-400)",
+  "var(--stats-indigo-700)",
+] as const
+
+const CONV_LABELS = ["reached", "connected", "booked"] as const
+
+type Props = {
+  stages: FunnelStages
   sequenceName: string | null
-  enrolled: number
-}) {
-  const n = funnel.length
-  if (n === 0) {
-    return (
-      <EmptyCard title="Sequence funnel" sub="No sequence selected" />
-    )
-  }
-
-  const maxR = Math.max(...funnel.map((f) => f.reached), 1)
-  const rowH = 44
-  const gap = 6
-  const height = n * rowH + (n - 1) * gap
-  const W = 560
-  const pad = 20
-
-  const polys = funnel.map((step, i) => {
-    const t = step.reached / maxR
-    const nextT = i < n - 1 ? funnel[i + 1].reached / maxR : t * 0.85
-    // Top width uses this step; bottom blends toward next for funnel shape
-    const topInset = ((1 - t) * (W - pad * 2)) / 2
-    const botInset = ((1 - nextT) * (W - pad * 2)) / 2
-    const y0 = i * (rowH + gap)
-    const y1 = y0 + rowH
-    return {
-      step,
-      points: `${pad + topInset},${y0} ${W - pad - topInset},${y0} ${W - pad - botInset},${y1} ${pad + botInset},${y1}`,
-      opacity: 1 - i * 0.12,
-      midY: y0 + rowH / 2 + 4,
-      leftX: pad + Math.max(topInset, botInset) + 24,
-      rightX: W - pad - Math.max(topInset, botInset) - 24,
-      dropX: W - 8,
-    }
-  })
-
-  return (
-    <div className="rounded-xl border border-border bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(16,23,42,0.04)]">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <h3 className="text-[13.5px] font-bold">Sequence funnel</h3>
-          <div className="mt-0.5 text-[11.5px] text-dim">
-            {sequenceName ?? "Sequence"} · {enrolled} enrolled
-          </div>
-        </div>
-        <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-dim">
-          Reached each step
-        </span>
-      </div>
-      <svg
-        viewBox={`0 0 ${W} ${height}`}
-        className="h-auto w-full"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="fg" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#2F4BD9" />
-            <stop offset="1" stopColor="#6B82F0" />
-          </linearGradient>
-        </defs>
-        {polys.map((p, i) => (
-          <g key={p.step.order}>
-            <polygon
-              points={p.points}
-              fill="url(#fg)"
-              opacity={p.opacity}
-            />
-            <text
-              x={p.leftX}
-              y={p.midY}
-              fill="#fff"
-              fontSize="12.5"
-              fontWeight="600"
-            >
-              {p.step.label}
-            </text>
-            <text
-              x={p.rightX}
-              y={p.midY}
-              textAnchor="end"
-              fill="#fff"
-              fontSize="12.5"
-              fontWeight="600"
-            >
-              {p.step.reached}
-            </text>
-            {i > 0 && p.step.dropPct != null && (
-              <text
-                x={p.dropX}
-                y={p.midY}
-                textAnchor="end"
-                fill="#98A0AC"
-                fontSize="10.5"
-              >
-                −{Math.round(p.step.dropPct * 100)}%
-              </text>
-            )}
-          </g>
-        ))}
-      </svg>
-    </div>
-  )
+  sequences: { id: string; name: string }[]
+  filters: StatsFilters
 }
 
-function EmptyCard({ title, sub }: { title: string; sub: string }) {
+export function FunnelChart({
+  stages,
+  sequenceName,
+  sequences,
+  filters,
+}: Props) {
+  const rows = [
+    { label: "Enrolled", count: stages.enrolled },
+    { label: "Contacted", count: stages.contacted },
+    { label: "Connected", count: stages.connected },
+    { label: "Meeting booked", count: stages.meetings },
+  ]
+  const empty = stages.enrolled === 0 || sequences.length === 0
+  const base = Math.max(stages.enrolled, 1)
+  const overallPct =
+    stages.enrolled === 0
+      ? 0
+      : (stages.meetings / stages.enrolled) * 100
+  const pickerLabel = sequenceName ?? sequences[0]?.name ?? "Sequence"
+
   return (
-    <div className="rounded-xl border border-border bg-white px-4 py-3.5">
-      <h3 className="text-[13.5px] font-bold">{title}</h3>
-      <p className="mt-2 text-sm text-dim">{sub}</p>
-    </div>
+    <StatsCard>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold text-stats-ink">Sequence funnel</h2>
+          <p className="mt-0.5 text-[13px] text-stats-muted">
+            From enrollment to booked meeting
+          </p>
+        </div>
+        {sequences.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-[34px] gap-1.5 rounded-lg border-stats-picker-line bg-white px-3 font-normal text-stats-ink shadow-none hover:bg-stats-canvas"
+                />
+              }
+            >
+              {pickerLabel}
+              <ChevronDown className="size-3.5 text-stats-muted" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {sequences.map((s) => (
+                <DropdownMenuItem
+                  key={s.id}
+                  render={
+                    <Link href={statsHref(filters, { sequenceId: s.id })} />
+                  }
+                >
+                  {s.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {empty ? (
+        <StatsEmptyBody>
+          Enroll prospects in a sequence to see the funnel
+        </StatsEmptyBody>
+      ) : (
+        <>
+          <div
+            className="flex flex-col"
+            role="img"
+            aria-label={rows
+              .map((r) => `${r.label}: ${r.count}`)
+              .join(", ")}
+          >
+            {rows.map((row, i) => {
+              const widthPct = (row.count / base) * 100
+              const prev = i === 0 ? null : rows[i - 1].count
+              const conv =
+                prev == null || prev === 0
+                  ? null
+                  : Math.round((row.count / prev) * 100)
+              return (
+                <div key={row.label}>
+                  {i > 0 && conv != null && (
+                    <p className="py-1.5 pl-[122px] text-[11px] text-stats-muted">
+                      ↓ {conv}% {CONV_LABELS[i - 1]}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-[110px_1fr_auto] items-center gap-3">
+                    <span className="truncate text-[13px] text-stats-secondary">
+                      {row.label}
+                    </span>
+                    <svg
+                      className="h-[22px] w-full"
+                      viewBox="0 0 100 22"
+                      preserveAspectRatio="none"
+                      aria-hidden
+                    >
+                      <rect
+                        width="100"
+                        height="22"
+                        rx="6"
+                        fill="var(--stats-track)"
+                      />
+                      <rect
+                        width={Math.min(100, Math.max(0, widthPct))}
+                        height="22"
+                        rx="6"
+                        fill={STAGE_FILLS[i]}
+                      />
+                    </svg>
+                    <MetricNum
+                      value={String(row.count)}
+                      empty={row.count === 0}
+                      className="min-w-[2rem] text-right text-[13px] font-bold"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="mt-5 text-xs text-stats-muted">
+            Overall: {stages.meetings} of {stages.enrolled} enrolled became
+            meetings —{" "}
+            <span className="font-semibold text-stats-secondary tabular-nums">
+              {overallPct % 1 === 0
+                ? `${overallPct}%`
+                : `${overallPct.toFixed(1)}%`}
+            </span>
+          </p>
+        </>
+      )}
+    </StatsCard>
   )
 }

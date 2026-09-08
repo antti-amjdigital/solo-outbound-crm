@@ -6,6 +6,7 @@ import {
   TaskStatus,
 } from "@prisma/client"
 import { Prisma } from "@prisma/client"
+import { cache } from "react"
 import { appToday, formatCalendarDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { overdueDays } from "@/lib/queue-filters"
@@ -14,6 +15,7 @@ import {
   type ProspectListFilters,
   type ProspectSort,
 } from "@/lib/prospect-filters"
+import { buildProspectSearchWhere, normalizePhone } from "@/lib/search"
 
 export type ProspectListRow = {
   id: string
@@ -59,7 +61,7 @@ function sortClause(
   return [{ firstName: dir }, { lastName: dir }]
 }
 
-export async function getProspectList(
+export const getProspectList = cache(async function getProspectList(
   raw: Record<string, string | string[] | undefined> = {},
 ): Promise<ProspectListResult> {
   const filters = parseProspectFilters(raw)
@@ -69,13 +71,19 @@ export async function getProspectList(
   if (filters.status !== "all") where.status = filters.status
   if (filters.source !== "all") where.source = filters.source
   if (filters.q) {
-    where.OR = [
-      { firstName: { contains: filters.q, mode: "insensitive" } },
-      { lastName: { contains: filters.q, mode: "insensitive" } },
-      { company: { contains: filters.q, mode: "insensitive" } },
-      { email: { contains: filters.q, mode: "insensitive" } },
-      { phone: { contains: filters.q, mode: "insensitive" } },
-    ]
+    Object.assign(where, buildProspectSearchWhere(filters.q))
+    const digits = normalizePhone(filters.q)
+    if (digits.length >= 3) {
+      const phoneRows = await db.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Prospect"
+        WHERE phone IS NOT NULL
+          AND regexp_replace(phone, '[^0-9+]', '', 'g') LIKE ${"%" + digits + "%"}
+      `
+      const phoneIds = phoneRows.map((r) => r.id)
+      if (phoneIds.length > 0) {
+        where.OR = [...(where.OR ?? []), { id: { in: phoneIds } }]
+      }
+    }
   }
   if (filters.sequenceId === "none") {
     where.enrollments = { none: { state: EnrollState.RUNNING } }
@@ -193,7 +201,7 @@ export async function getProspectList(
       .filter((s): s is string => Boolean(s))
       .sort(),
   }
-}
+})
 
 export function formatRelativeDue(due: Date, today = appToday()): string {
   const days = overdueDays(due, today)

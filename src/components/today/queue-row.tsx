@@ -3,18 +3,12 @@
 import Link from "next/link"
 import { useLayoutEffect, useRef, useState } from "react"
 import { CallOutcome, StepType, TaskStatus } from "@prisma/client"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { TableCell, TableRow } from "@/components/ui/table"
+import { CopyContactButton } from "@/components/today/copy-contact-button"
+import { OutcomePill } from "@/components/today/outcome-pill"
 import { OutcomePopover } from "@/components/today/outcome-popover"
 import { SnoozeMenu } from "@/components/today/snooze-menu"
 import { TypeIcon } from "@/components/today/type-icon"
-import {
-  OUTCOME_LABEL,
-  contactForType,
-  prospectDisplayName,
-} from "@/components/today/labels"
-import { overdueDays } from "@/lib/queue-filters"
+import { contactForType, prospectDisplayName } from "@/components/today/labels"
 import type { TodayQueueItem } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
@@ -22,6 +16,7 @@ type Props = {
   item: TodayQueueItem
   selected: boolean
   exiting?: boolean
+  done?: boolean
   popoverOpen: boolean
   snoozeOpen: boolean
   showSnooze: boolean
@@ -50,11 +45,12 @@ function DoneCheck({ animate }: { animate?: boolean }) {
   return (
     <span
       data-queue-check={animate ? "" : undefined}
-      className="inline-flex size-[18px] items-center justify-center rounded-full bg-good text-white"
+      className="inline-flex size-5 items-center justify-center rounded-full bg-[#16a34a] text-white"
     >
       <svg
         viewBox="0 0 24 24"
-        className="size-2.5 fill-none stroke-current [stroke-width:3]"
+        className="size-3 fill-none stroke-current [stroke-width:3] [stroke-linecap:round] [stroke-linejoin:round]"
+        aria-hidden
       >
         <polyline points="20 6 9 17 4 12" />
       </svg>
@@ -62,10 +58,14 @@ function DoneCheck({ animate }: { animate?: boolean }) {
   )
 }
 
+const ROW_GRID =
+  "grid grid-cols-[28px_minmax(0,1fr)_190px_130px_90px] items-center gap-3.5 px-4 py-3"
+
 export function QueueRow({
   item,
   selected,
   exiting = false,
+  done = false,
   popoverOpen,
   snoozeOpen,
   showSnooze,
@@ -75,14 +75,12 @@ export function QueueRow({
   onComplete,
   onSnooze,
 }: Props) {
-  const rowRef = useRef<HTMLTableRowElement>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
   const [exitPhase, setExitPhase] = useState<"idle" | "collapse">("idle")
-  const done = item.status === TaskStatus.DONE
+  const isDone = done || item.status === TaskStatus.DONE
   const name = prospectDisplayName(item.prospect)
   const contact = contactForType(item.type, item.prospect)
-  const daysLate = !done && !exiting ? overdueDays(item.dueDate) : 0
-  const isCallback =
-    item.lastOutcome === CallOutcome.CALLBACK_REQUESTED && !done
+  const company = item.prospect.company
 
   useLayoutEffect(() => {
     if (!exiting) {
@@ -112,23 +110,22 @@ export function QueueRow({
   }, [exiting])
 
   return (
-    <TableRow
+    <div
       ref={rowRef}
+      role="row"
+      data-queue-row
       data-state={selected ? "selected" : undefined}
       data-exiting={exiting || undefined}
       data-exit-phase={exiting ? exitPhase : undefined}
       className={cn(
-        "cursor-pointer",
-        selected &&
-          !exiting &&
-          "bg-accent-soft/60 shadow-[inset_3px_0_0_var(--accent-brand)]",
-        done &&
-          "text-dim hover:bg-transparent [&_td]:line-through [&_td:first-child]:no-underline [&_td:last-child]:no-underline",
+        ROW_GRID,
+        "cursor-pointer hover:bg-[#f8fafc] focus-within:bg-[#f8fafc]",
+        selected && !exiting && !isDone && "bg-[#f8fafc]",
       )}
       onClick={onSelect}
     >
-      <TableCell className="w-11">
-        {done ? (
+      <div role="cell" className="flex items-center justify-center">
+        {isDone ? (
           <DoneCheck />
         ) : exiting ? (
           <DoneCheck animate />
@@ -136,91 +133,103 @@ export function QueueRow({
           <OutcomePopover
             taskId={item.id}
             taskType={item.type}
-            prospectName={name}
+            hasActiveSequence={item.hasActiveSequence}
             open={popoverOpen}
             onOpenChange={onPopoverOpenChange}
             onComplete={onComplete}
           />
         )}
-      </TableCell>
+      </div>
 
-      <TableCell className="max-w-[280px]">
-        <span className="inline-flex items-center gap-2">
-          <TypeIcon type={item.type} />
-          <span className="truncate font-medium">{item.label}</span>
-          {daysLate > 0 && (
-            <span className="shrink-0 text-[11px] font-semibold text-bad">
-              · overdue {daysLate}d
-            </span>
+      <div role="cell" className="min-w-0">
+        <div
+          className={cn(
+            "truncate text-[14px] font-semibold",
+            isDone ? "text-[#64748b]" : "text-[#1e293b]",
           )}
-          {isCallback && (
-            <Badge
-              variant="outline"
-              className="border-accent-line bg-accent-soft text-primary"
-            >
-              callback
-            </Badge>
-          )}
-        </span>
-      </TableCell>
-
-      <TableCell>
-        <Link
-          href={`/prospects/${item.prospect.id}`}
-          className="hover:underline"
-          onClick={(e) => e.stopPropagation()}
         >
-          {name}
-        </Link>
-      </TableCell>
-
-      <TableCell className="text-dim">{item.prospect.company ?? "—"}</TableCell>
-
-      <TableCell>
-        {contact.href ? (
-          <a
-            href={contact.href}
-            className={cn("font-mono text-[12px]", contact.muted && "text-dim")}
+          <Link
+            href={`/prospects/${item.prospect.id}`}
+            className="hover:underline focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
             onClick={(e) => e.stopPropagation()}
           >
-            {contact.text}
-          </a>
+            {name}
+          </Link>
+          {company ? (
+            <span className="font-normal text-[#94a3b8]"> · {company}</span>
+          ) : null}
+        </div>
+        <div
+          className={cn(
+            "mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px]",
+            isDone ? "text-[#94a3b8]" : "text-[#64748b]",
+          )}
+        >
+          <TypeIcon type={item.type} variant="inline" />
+          <span className="truncate">{item.label}</span>
+        </div>
+      </div>
+
+      <div role="cell" className="group/contact flex min-w-0 items-center gap-1">
+        {contact.text !== "—" ? (
+          <>
+            {contact.href ? (
+              <a
+                href={contact.href}
+                className={cn(
+                  "truncate text-[14px] font-medium tabular-nums hover:underline focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none",
+                  isDone ? "text-[#94a3b8]" : "text-[#1e293b]",
+                  contact.muted && "font-normal",
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {contact.text}
+              </a>
+            ) : (
+              <span
+                className={cn(
+                  "truncate text-[14px] font-medium tabular-nums",
+                  isDone ? "text-[#94a3b8]" : "text-[#1e293b]",
+                  contact.muted && "font-normal",
+                )}
+              >
+                {contact.text}
+              </span>
+            )}
+            {contact.raw ? (
+              <CopyContactButton
+                value={contact.raw}
+                label={`Copy ${item.type === StepType.CALL ? "phone number" : "contact"}`}
+              />
+            ) : null}
+          </>
         ) : (
-          <span
-            className={cn("font-mono text-[12px]", contact.muted && "text-dim")}
-          >
-            {contact.text}
+          <span className="text-[14px] text-[#cbd5e1]">—</span>
+        )}
+      </div>
+
+      <div role="cell">
+        <OutcomePill outcome={item.lastOutcome} />
+      </div>
+
+      <div role="cell" className="text-right">
+        {isDone ? (
+          <span className="text-[13px] tabular-nums text-[#94a3b8]">
+            {formatDoneTime(item.completedAt)}
           </span>
-        )}
-      </TableCell>
-
-      <TableCell>
-        {item.lastOutcome ? (
-          <Badge variant="outline" className="font-normal">
-            {OUTCOME_LABEL[item.lastOutcome]}
-          </Badge>
-        ) : (
-          <span className="text-[11px] text-dim">—</span>
-        )}
-      </TableCell>
-
-      <TableCell className="text-right">
-        {done ? (
-          <span className="text-[11px]">{formatDoneTime(item.completedAt)}</span>
         ) : item.type === StepType.EMAIL ||
           item.type === StepType.EMAIL_REPLY ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs"
+          <button
+            type="button"
             disabled={!item.template || exiting}
+            className="text-[13px] text-[#64748b] hover:text-[#1e293b] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
             onClick={(e) => {
               e.stopPropagation()
               if (item.template) void navigator.clipboard.writeText(item.template)
             }}
           >
             Copy template
-          </Button>
+          </button>
         ) : showSnooze ? (
           <SnoozeMenu
             taskId={item.id}
@@ -229,7 +238,7 @@ export function QueueRow({
             onSnooze={onSnooze}
           />
         ) : null}
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
   )
 }

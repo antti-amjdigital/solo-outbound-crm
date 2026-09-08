@@ -1,5 +1,9 @@
 import Link from "next/link"
-import { hrefWithParams, type TodayQueueFilters } from "@/lib/queue-filters"
+import {
+  hrefWithParams,
+  type QueueRangeFilter,
+  type TodayQueueFilters,
+} from "@/lib/queue-filters"
 import type { TodayQueueCounts } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
@@ -10,64 +14,35 @@ type Props = {
 
 function baseParams(filters: TodayQueueFilters): Record<string, string | undefined> {
   return {
-    type: filters.type === "all" ? undefined : filters.type,
     range: filters.range === "today" ? undefined : filters.range,
-    q: filters.q || undefined,
     from: filters.from,
     to: filters.to,
   }
 }
 
+const RANGES: {
+  key: QueueRangeFilter
+  label: string
+  countKey?: keyof Pick<TodayQueueCounts, "overdue" | "today" | "tomorrow" | "week">
+  overdue?: boolean
+}[] = [
+  { key: "overdue", label: "Overdue", countKey: "overdue", overdue: true },
+  { key: "today", label: "Today", countKey: "today" },
+  { key: "tomorrow", label: "Tomorrow", countKey: "tomorrow" },
+  { key: "week", label: "This week", countKey: "week" },
+]
+
 export function QueueFilters({ filters, counts }: Props) {
   const base = baseParams(filters)
 
-  const types = [
-    { key: "all" as const, label: "All", count: counts.all },
-    { key: "call" as const, label: "Call", count: counts.call },
-    { key: "email" as const, label: "Email", count: counts.email },
-    { key: "reply" as const, label: "Reply", count: counts.reply },
-    { key: "linkedin" as const, label: "LinkedIn", count: counts.linkedin },
-    { key: "manual" as const, label: "Manual", count: counts.manual },
-  ]
-
-  const ranges = [
-    { key: "overdue" as const, label: "Overdue", count: counts.overdue, od: true },
-    { key: "today" as const, label: "Today", count: counts.today },
-    { key: "tomorrow" as const, label: "Tomorrow" },
-    { key: "week" as const, label: "This week" },
-    { key: "next" as const, label: "Next week" },
-  ]
-
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-2">
-      {types.map((t, i) => (
-        <span key={t.key} className="contents">
-          {i === 1 && <span className="mx-1 h-4 w-px bg-border" />}
-          <Link
-            href={hrefWithParams(base, {
-              type: t.key === "all" ? undefined : t.key,
-            })}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-transparent bg-surface px-2.5 py-1 text-xs text-dim",
-              filters.type === t.key &&
-                "border-accent-line bg-accent-soft font-semibold text-primary",
-            )}
-          >
-            {t.label}
-            <span
-              className={cn(
-                "rounded-lg bg-black/5 px-1 text-[10px]",
-                filters.type === t.key && "bg-primary/15",
-              )}
-            >
-              {t.count}
-            </span>
-          </Link>
-        </span>
-      ))}
+    <div className="flex flex-wrap items-center gap-1">
+      {RANGES.map((r) => {
+        const selected = filters.range === r.key
+        const count = r.countKey != null ? counts[r.countKey] : undefined
+        const overdueHot = r.overdue && count != null && count > 0
 
-      <div className="ml-auto flex flex-wrap gap-0.5">
-        {ranges.map((r) => (
+        return (
           <Link
             key={r.key}
             href={hrefWithParams(base, {
@@ -76,19 +51,38 @@ export function QueueFilters({ filters, counts }: Props) {
               to: undefined,
             })}
             className={cn(
-              "rounded-md px-2.5 py-1 text-xs text-dim",
-              r.od && "text-bad",
-              filters.range === r.key && "bg-accent-soft font-semibold text-primary",
-              filters.range === r.key && r.od && "text-bad",
+              "inline-flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-[13px] transition-colors focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none",
+              selected &&
+                !overdueHot &&
+                "border-[#c7d2fe] bg-[#eef2ff] font-semibold text-[#4f46e5]",
+              selected &&
+                overdueHot &&
+                "border-[#fecaca] bg-[#fef2f2] font-semibold text-[#dc2626]",
+              !selected && !overdueHot && "text-[#64748b] hover:text-[#1e293b]",
+              !selected && overdueHot && "font-medium text-[#dc2626] hover:text-[#b91c1c]",
             )}
           >
             {r.label}
-            {r.count != null && (
-              <span className="ml-1 text-[10px] opacity-85">{r.count}</span>
+            {count != null && (
+              <span
+                className={cn(
+                  "inline-flex min-w-[18px] items-center justify-center text-[12px] tabular-nums",
+                  selected &&
+                    !overdueHot &&
+                    "size-[18px] rounded-full bg-[#4f46e5] text-[11px] font-semibold text-white",
+                  selected &&
+                    overdueHot &&
+                    "size-[18px] rounded-full bg-[#dc2626] text-[11px] font-semibold text-white",
+                  !selected && "text-[#94a3b8]",
+                  !selected && overdueHot && "text-[#dc2626]",
+                )}
+              >
+                {count}
+              </span>
             )}
           </Link>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }

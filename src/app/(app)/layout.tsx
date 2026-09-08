@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { hrefs: navHrefs, sequenceHref } = await getMainNavConfig()
 
   return (
-    <div className="flex min-h-full flex-1">
+    <div className="flex h-dvh min-h-0 overflow-hidden">
       <NavRail sequenceHref={sequenceHref} />
       <RoutePreloader hrefs={navHrefs} />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</main>

@@ -3,9 +3,11 @@ import {
   formatCalendarDate,
   freezeNow,
   parseCalendarDate,
+  appToday,
 } from "../src/lib/dates"
 import {
   completeTask,
+  createAdHocTask,
   enrollProspect,
   markEmailReplyReceived,
   rescheduleTask,
@@ -270,5 +272,61 @@ describe("sequence engine", () => {
     const enr = await db.enrollment.findUnique({ where: { id: enrollment.id } })
     expect(enr?.state).toBe(EnrollState.PAUSED)
     expect(await countOpen(db, enrollment.id)).toBe(1)
+  })
+
+  it("createAdHocTask creates a standalone open task", async () => {
+    const { prospect } = await seed(db)
+    const task = await createAdHocTask(
+      prospect.id,
+      {
+        type: StepType.CALL,
+        label: "Follow up on proposal",
+        dueDate: parseCalendarDate("2026-08-20"),
+      },
+      db,
+    )
+    expect(task.enrollmentId).toBeNull()
+    expect(task.stepOrder).toBeNull()
+    expect(task.status).toBe(TaskStatus.OPEN)
+    expect(task.type).toBe(StepType.CALL)
+    expect(task.label).toBe("Follow up on proposal")
+    expect(formatCalendarDate(task.dueDate)).toBe("2026-08-20")
+  })
+
+  it("createAdHocTask rejects invalid type and empty label", async () => {
+    const { prospect } = await seed(db)
+    await expect(
+      createAdHocTask(
+        prospect.id,
+        { type: StepType.EMAIL_REPLY, label: "Reply", dueDate: appToday() },
+        db,
+      ),
+    ).rejects.toThrow("Invalid ad-hoc task type")
+    await expect(
+      createAdHocTask(
+        prospect.id,
+        { type: StepType.CALL, label: "   ", dueDate: appToday() },
+        db,
+      ),
+    ).rejects.toThrow("Task label is required")
+  })
+
+  it("createAdHocTask coexists with enrollment open task", async () => {
+    const { prospect, sequence } = await seed(db)
+    const { enrollment } = await enrollProspect(prospect.id, sequence.id, {}, db)
+    expect(await countOpen(db, enrollment.id)).toBe(1)
+
+    await createAdHocTask(
+      prospect.id,
+      { type: StepType.MANUAL, label: "Send deck", dueDate: parseCalendarDate(MON) },
+      db,
+    )
+
+    const open = await db.task.findMany({
+      where: { prospectId: prospect.id, status: TaskStatus.OPEN },
+    })
+    expect(open).toHaveLength(2)
+    expect(open.some((t) => t.enrollmentId === null)).toBe(true)
+    expect(open.some((t) => t.enrollmentId === enrollment.id)).toBe(true)
   })
 })

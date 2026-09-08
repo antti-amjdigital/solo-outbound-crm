@@ -1,5 +1,9 @@
 /** Shared CSV import types and pure helpers (client + server). */
 
+import { normalizePhone } from "./normalize-phone"
+
+export { normalizePhone }
+
 export type ProspectField =
   | "firstName"
   | "lastName"
@@ -87,10 +91,6 @@ export function guessMapping(headers: string[]): FieldMapping {
     mapping[h] = matched
   }
   return mapping
-}
-
-export function normalizePhone(phone: string): string {
-  return phone.replace(/[^\d+]/g, "")
 }
 
 export function normalizeEmail(email: string): string {

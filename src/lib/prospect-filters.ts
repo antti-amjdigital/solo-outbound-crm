@@ -98,10 +98,13 @@ export function activeFilterCount(f: ProspectListFilters): number {
 }
 
 export const STATUS_LABEL: Record<ProspectStatus, string> = {
-  NEW: "NEW",
-  ACTIVE: "ACTIVE",
-  MEETING_BOOKED: "BOOKED",
-  WON: "WON",
-  DEAD: "DEAD",
-  PAUSED: "PAUSED",
+  NEW: "New",
+  ACTIVE: "Active",
+  MEETING_BOOKED: "Booked",
+  WON: "Won",
+  DEAD: "Dead",
+  PAUSED: "Paused",
 }
+
+export const REMOVE_FROM_SEQUENCE_LABEL = "Remove from sequences"
+export const REMOVED_FROM_SEQUENCE_HISTORY_LABEL = "Removed from sequence"

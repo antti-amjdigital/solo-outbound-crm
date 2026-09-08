@@ -37,16 +37,24 @@ type Props = {
   selectedIds: string[]
   sequences: { id: string; name: string }[]
   onClear: () => void
+  enrollOpen: boolean
+  onEnrollOpenChange: (open: boolean) => void
 }
 
-export function BulkBar({ selectedIds, sequences, onClear }: Props) {
+const secondaryBtn =
+  "h-[38px] rounded-lg border-stats-picker-line bg-white px-4 text-[13px] font-semibold text-stats-secondary hover:bg-stats-canvas"
+
+export function BulkBar({
+  selectedIds,
+  sequences,
+  onClear,
+  enrollOpen,
+  onEnrollOpenChange,
+}: Props) {
   const router = useRouter()
   const [pending, start] = useTransition()
-  const [enrollOpen, setEnrollOpen] = useState(false)
   const [sequenceId, setSequenceId] = useState(sequences[0]?.id ?? "")
   const [spreadDays, setSpreadDays] = useState("1")
-
-  if (selectedIds.length === 0) return null
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     start(async () => {
@@ -55,6 +63,7 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
       else {
         toast.success(okMsg)
         onClear()
+        onEnrollOpenChange(false)
         router.refresh()
       }
     })
@@ -62,19 +71,23 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 border-b border-accent-line bg-accent-soft/70 px-4 py-2">
-        <b className="text-sm">{selectedIds.length} selected</b>
+      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-stats-indigo-200 bg-[#eef2ff] px-4 py-2.5">
+        <b className="text-[13px] font-semibold text-stats-indigo-700">
+          {selectedIds.length} selected
+        </b>
         <Button
-          size="sm"
           variant="outline"
           disabled={pending}
-          onClick={() => setEnrollOpen(true)}
+          className={secondaryBtn}
+          onClick={() => onEnrollOpenChange(true)}
         >
           Enroll in sequence
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={<Button size="sm" variant="outline" disabled={pending} />}
+            render={
+              <Button variant="outline" disabled={pending} className={secondaryBtn} />
+            }
           >
             Change status
           </DropdownMenuTrigger>
@@ -95,9 +108,9 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
-          size="sm"
           variant="destructive"
           disabled={pending}
+          className="h-[38px] rounded-lg px-4 text-[13px] font-semibold"
           onClick={() =>
             run(() => deleteProspectsAction(selectedIds), "Deleted")
           }
@@ -105,16 +118,15 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
           Delete
         </Button>
         <Button
-          size="sm"
           variant="ghost"
-          className="ml-auto"
+          className="ml-auto h-[38px] text-[13px] font-semibold text-stats-secondary"
           onClick={onClear}
         >
           Clear selection
         </Button>
       </div>
 
-      <Dialog open={enrollOpen} onOpenChange={setEnrollOpen}>
+      <Dialog open={enrollOpen} onOpenChange={onEnrollOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Enroll {selectedIds.length} prospects</DialogTitle>
@@ -122,7 +134,10 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
           <div className="grid gap-3 py-2">
             <label className="grid gap-1.5 text-xs font-medium">
               Sequence
-              <Select value={sequenceId} onValueChange={(v) => setSequenceId(v ?? "")}>
+              <Select
+                value={sequenceId}
+                onValueChange={(v) => setSequenceId(v ?? "")}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Pick sequence">
                     {sequences.find((s) => s.id === sequenceId)?.name}
@@ -149,11 +164,12 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEnrollOpen(false)}>
+            <Button variant="outline" onClick={() => onEnrollOpenChange(false)}>
               Cancel
             </Button>
             <Button
               disabled={pending || !sequenceId}
+              className="bg-stats-indigo-700 hover:bg-stats-indigo-900"
               onClick={() => {
                 run(async () => {
                   const res = await enrollProspectsAction({
@@ -161,7 +177,6 @@ export function BulkBar({ selectedIds, sequences, onClear }: Props) {
                     sequenceId,
                     spreadDays: Number(spreadDays) || 1,
                   })
-                  if (res.ok) setEnrollOpen(false)
                   return res
                 }, `Enrolled ${selectedIds.length}`)
               }}

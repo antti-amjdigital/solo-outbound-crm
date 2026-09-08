@@ -13,5 +13,9 @@ export default async function ProspectDetailPage({
   const raw = await searchParams
   const data = await getProspectDetail(id, raw)
   if (!data) notFound()
-  return <ProspectDetailView data={data} />
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <ProspectDetailView data={data} />
+    </div>
+  )
 }

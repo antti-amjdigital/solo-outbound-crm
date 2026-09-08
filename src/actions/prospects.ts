@@ -2,6 +2,7 @@
 
 import { ActivityType, EnrollState, ProspectStatus } from "@prisma/client"
 import { db } from "@/lib/db"
+import { buildProspectSearchWhere, normalizePhone } from "@/lib/search"
 import { revalidateProspects } from "@/lib/revalidate"
 import {
   markEmailReplyReceived,
@@ -158,10 +159,39 @@ export async function upsertPinnedNoteAction(
       await db.note.update({ where: { id: noteId }, data: { body: trimmed } })
     } else {
       await db.note.create({ data: { prospectId, body: trimmed } })
-      await db.activity.create({
-        data: { prospectId, type: ActivityType.NOTE, note: trimmed },
-      })
     }
+    revalidateProspects(prospectId)
+    return { ok: true }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function addNoteAction(
+  prospectId: string,
+  body: string,
+  options: { pinned?: boolean } = {},
+): Promise<ActionResult> {
+  try {
+    const trimmed = body.trim()
+    if (!trimmed) return { ok: false, error: "Note cannot be empty" }
+
+    await db.activity.create({
+      data: { prospectId, type: ActivityType.NOTE, note: trimmed },
+    })
+
+    if (options.pinned) {
+      const existing = await db.note.findFirst({
+        where: { prospectId },
+        orderBy: { updatedAt: "desc" },
+      })
+      if (existing) {
+        await db.note.update({ where: { id: existing.id }, data: { body: trimmed } })
+      } else {
+        await db.note.create({ data: { prospectId, body: trimmed } })
+      }
+    }
+
     revalidateProspects(prospectId)
     return { ok: true }
   } catch (error) {
@@ -173,17 +203,7 @@ export async function addTimelineNoteAction(
   prospectId: string,
   body: string,
 ): Promise<ActionResult> {
-  try {
-    const trimmed = body.trim()
-    if (!trimmed) return { ok: false, error: "Note cannot be empty" }
-    await db.activity.create({
-      data: { prospectId, type: ActivityType.NOTE, note: trimmed },
-    })
-    revalidateProspects(prospectId)
-    return { ok: true }
-  } catch (error) {
-    return fail(error)
-  }
+  return addNoteAction(prospectId, body, { pinned: false })
 }
 
 export async function theyRepliedAction(
@@ -233,6 +253,54 @@ export async function logAdHocActivityAction(input: {
 
     revalidateProspects(input.prospectId)
     return { ok: true }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export type TaskProspectOption = {
+  id: string
+  firstName: string
+  lastName: string | null
+  company: string | null
+  phone: string | null
+}
+
+export async function searchProspectsForTaskAction(
+  q: string,
+): Promise<{ ok: true; prospects: TaskProspectOption[] } | ActionResult> {
+  try {
+    const trimmed = q.trim()
+    if (!trimmed) return { ok: true, prospects: [] }
+    const digits = normalizePhone(trimmed)
+    const phoneIds =
+      digits.length >= 3
+        ? (
+            await db.$queryRaw<{ id: string }[]>`
+              SELECT id FROM "Prospect"
+              WHERE phone IS NOT NULL
+                AND regexp_replace(phone, '[^0-9+]', '', 'g') LIKE ${"%" + digits + "%"}
+            `
+          ).map((r) => r.id)
+        : []
+
+    const textWhere = buildProspectSearchWhere(trimmed)
+    const orClause = [...(textWhere.OR ?? [])]
+    if (phoneIds.length > 0) orClause.push({ id: { in: phoneIds } })
+
+    const prospects = await db.prospect.findMany({
+      where: { OR: orClause },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        company: true,
+        phone: true,
+      },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      take: 8,
+    })
+    return { ok: true, prospects }
   } catch (error) {
     return fail(error)
   }

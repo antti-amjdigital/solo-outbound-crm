@@ -14,79 +14,47 @@ import {
   type StatsFilters,
   type StatsPeriod,
 } from "@/lib/stats-filters"
-import { cn } from "@/lib/utils"
+import { ChevronDown } from "lucide-react"
 
 const PERIODS: StatsPeriod[] = ["7d", "30d", "90d", "quarter"]
 
 type Props = {
   filters: StatsFilters
-  sequences: { id: string; name: string }[]
   rangeLabel: string
 }
 
-export function StatsFiltersBar({ filters, sequences, rangeLabel }: Props) {
-  const seqLabel =
-    filters.sequenceId === "all"
-      ? "All"
-      : (sequences.find((s) => s.id === filters.sequenceId)?.name ?? "All")
-
+/** Period dropdown + date range for the Stats header. */
+export function StatsPeriodFilter({ filters, rangeLabel }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
-      <FilterDrop label="Period" value={PERIOD_LABEL[filters.period]} active={filters.period !== "30d"}>
-        {PERIODS.map((p) => (
-          <DropdownMenuItem key={p} render={<Link href={statsHref(filters, { period: p })} />}>
-            {PERIOD_LABEL[p]}
-          </DropdownMenuItem>
-        ))}
-      </FilterDrop>
-
-      <FilterDrop label="Sequence" value={seqLabel} active={filters.sequenceId !== "all"}>
-        <DropdownMenuItem render={<Link href={statsHref(filters, { sequenceId: "all" })} />}>
-          All
-        </DropdownMenuItem>
-        {sequences.map((s) => (
-          <DropdownMenuItem
-            key={s.id}
-            render={<Link href={statsHref(filters, { sequenceId: s.id })} />}
-          >
-            {s.name}
-          </DropdownMenuItem>
-        ))}
-      </FilterDrop>
-
-      <span className="ml-auto text-xs text-dim">{rangeLabel}</span>
+    <div className="flex shrink-0 items-center gap-3">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-[34px] gap-1.5 rounded-lg border-stats-picker-line bg-white px-3 font-normal text-stats-ink shadow-none hover:bg-stats-canvas"
+            />
+          }
+        >
+          <span className="text-stats-muted">Period</span>{" "}
+          {PERIOD_LABEL[filters.period]}
+          <ChevronDown className="size-3.5 text-stats-muted" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {PERIODS.map((p) => (
+            <DropdownMenuItem
+              key={p}
+              render={<Link href={statsHref(filters, { period: p })} />}
+            >
+              {PERIOD_LABEL[p]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <span className="whitespace-nowrap text-[13px] text-stats-muted tabular-nums">
+        {rangeLabel}
+      </span>
     </div>
-  )
-}
-
-function FilterDrop({
-  label,
-  value,
-  active,
-  children,
-}: {
-  label: string
-  value: string
-  active: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              "gap-1.5 font-normal",
-              active && "border-accent-line bg-accent-soft text-primary",
-            )}
-          />
-        }
-      >
-        <span className="text-dim">{label}</span> {value}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">{children}</DropdownMenuContent>
-    </DropdownMenu>
   )
 }

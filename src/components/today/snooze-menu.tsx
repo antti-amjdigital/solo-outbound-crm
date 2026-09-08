@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
   DropdownMenu,
@@ -37,10 +36,9 @@ export function SnoozeMenu({ taskId, open, onOpenChange, onSnooze }: Props) {
       <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger
           render={
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
+            <button
+              type="button"
+              className="inline-flex items-center text-[13px] text-[#64748b] hover:text-[#1e293b] focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
               onClick={(e) => e.stopPropagation()}
             />
           }

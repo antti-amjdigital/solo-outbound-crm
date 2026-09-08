@@ -6,6 +6,7 @@ import {
   buildFunnel,
   computeCallRates,
   computePickupBuckets,
+  isConnectedIsh,
   isDial,
   prospectMeetingRate,
   rankSteps,
@@ -27,6 +28,7 @@ import {
   type StatsFilters,
 } from "@/lib/stats-filters"
 import { buildHeatmap, buildWeekly } from "@/lib/stats-series"
+import type { FunnelStages } from "@/lib/stats-constants"
 
 type ActivityRow = {
   type: ActivityType
@@ -43,6 +45,7 @@ export type StatsDashboard = {
   sequenceName: string | null
   sequences: { id: string; name: string }[]
   enrolledForFunnel: number
+  funnelStages: FunnelStages
   current: CallRates
   previous: CallRates
   emailsSent: number
@@ -94,6 +97,54 @@ function trailingWeeksRange(weeks: number, endDay: Date = appToday()): InstantRa
   })
 }
 
+function buildFunnelStages(
+  enrolled: number,
+  rows: ActivityRow[],
+): FunnelStages {
+  const contacted = new Set<string>()
+  const connected = new Set<string>()
+  const meetings = new Set<string>()
+  for (const r of rows) {
+    if (isDial(r)) contacted.add(r.prospectId)
+    if (r.outcome && isConnectedIsh(r.outcome)) connected.add(r.prospectId)
+    if (
+      r.type === ActivityType.MEETING_BOOKED ||
+      r.outcome === CallOutcome.MEETING_BOOKED
+    ) {
+      meetings.add(r.prospectId)
+    }
+  }
+  return {
+    enrolled,
+    contacted: contacted.size,
+    connected: connected.size,
+    meetings: meetings.size,
+  }
+}
+
+/** Sequences ordered by most recent enrollment activity. */
+async function loadSequencesByRecency(): Promise<{ id: string; name: string }[]> {
+  const rows = await db.sequence.findMany({
+    select: {
+      id: true,
+      name: true,
+      enrollments: {
+        select: { startedAt: true },
+        orderBy: { startedAt: "desc" },
+        take: 1,
+      },
+    },
+  })
+  return rows
+    .sort((a, b) => {
+      const at = a.enrollments[0]?.startedAt.getTime() ?? 0
+      const bt = b.enrollments[0]?.startedAt.getTime() ?? 0
+      if (bt !== at) return bt - at
+      return a.name.localeCompare(b.name)
+    })
+    .map(({ id, name }) => ({ id, name }))
+}
+
 export async function getStatsDashboard(
   raw: Record<string, string | string[] | undefined>,
 ): Promise<StatsDashboard> {
@@ -103,13 +154,10 @@ export async function getStatsDashboard(
   const chartRange = trailingWeeksRange(13)
   const seqId = filters.sequenceId
 
-  const sequences = await db.sequence.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  })
+  const sequences = await loadSequencesByRecency()
   const activeSeq =
     seqId !== "all"
-      ? sequences.find((s) => s.id === seqId) ?? null
+      ? sequences.find((s) => s.id === seqId) ?? sequences[0] ?? null
       : sequences[0] ?? null
 
   const [currentRows, prevRows, chartRows, newEnrollments, funnelSteps, enrolledForFunnel] =
@@ -158,6 +206,7 @@ export async function getStatsDashboard(
     sequenceName: activeSeq?.name ?? null,
     sequences,
     enrolledForFunnel,
+    funnelStages: buildFunnelStages(enrolledForFunnel, funnelRows),
     current,
     previous,
     emailsSent: currentRows.filter(
