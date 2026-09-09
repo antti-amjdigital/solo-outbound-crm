@@ -1,6 +1,6 @@
 "use server"
 
-import { ActivityType, EnrollState, ProspectStatus } from "@prisma/client"
+import { ActivityType, CallOutcome, EnrollState, ProspectStatus } from "@prisma/client"
 import { db } from "@/lib/db"
 import { buildProspectSearchWhere, normalizePhone } from "@/lib/search"
 import { revalidateProspects } from "@/lib/revalidate"
@@ -169,6 +169,42 @@ export async function deleteActivityAction(
     })
     await db.activity.delete({ where: { id: activityId } })
     revalidateProspects(prospectId)
+    return { ok: true }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** Correct a logged note (and call outcome). Does not rewrite time, type, or step. */
+export async function updateLoggedActivityAction(input: {
+  activityId: string
+  prospectId: string
+  note: string
+  outcome?: CallOutcome
+}): Promise<ActionResult> {
+  try {
+    const activity = await db.activity.findFirst({
+      where: { id: input.activityId, prospectId: input.prospectId },
+    })
+    if (!activity) return { ok: false, error: "Activity not found" }
+    if (
+      activity.type === ActivityType.STATUS_CHANGE &&
+      activity.note === "Prospect created"
+    ) {
+      return { ok: false, error: "Cannot edit prospect creation" }
+    }
+    if (input.outcome != null && activity.type !== ActivityType.CALL) {
+      return { ok: false, error: "Only calls have an outcome" }
+    }
+
+    await db.activity.update({
+      where: { id: input.activityId },
+      data: {
+        note: input.note.trim() || null,
+        ...(input.outcome != null ? { outcome: input.outcome } : {}),
+      },
+    })
+    revalidateProspects(input.prospectId)
     return { ok: true }
   } catch (error) {
     return fail(error)

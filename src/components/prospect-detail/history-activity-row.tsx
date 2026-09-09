@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ActivityType, StepType, type Activity } from "@prisma/client"
-import { CornerDownLeft, StickyNote, Trash2, UserPlus } from "lucide-react"
+import { CornerDownLeft, Pencil, StickyNote, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { TypeIcon } from "@/components/today/type-icon"
 import { OUTCOME_LABEL } from "@/components/today/labels"
+import { HistoryActivityEditDialog } from "@/components/prospect-detail/history-activity-edit-dialog"
 import { deleteActivityAction } from "@/actions/prospects"
 import { useFreshEnter } from "@/lib/fresh-enter"
 import { waitForUndo } from "@/lib/undo-toast"
@@ -119,8 +120,10 @@ export function ActivityRow({
   const router = useRouter()
   const [, start] = useTransition()
   const [hidden, setHidden] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const entering = useFreshEnter(a.occurredAt)
   const canRemove = !isCreationEvent(a)
+  const canEdit = canRemove && a.type !== ActivityType.STATUS_CHANGE
   const { notes: taskNotes } = splitTaskLabel(taskLabel)
   const activityNote =
     a.type === ActivityType.STATUS_CHANGE
@@ -159,7 +162,7 @@ export function ActivityRow({
     <div
       data-enter-row
       data-entering={entering || undefined}
-      className="group relative grid grid-cols-[30px_1fr_auto] items-start gap-3 py-2.5 pr-7"
+      className="group relative grid grid-cols-[30px_1fr_auto] items-start gap-3 py-2.5 pr-14"
     >
       <HistoryIcon activity={a} />
       <div className="min-w-0">
@@ -178,14 +181,34 @@ export function ActivityRow({
             Step {a.stepOrder}
           </div>
         )}
-        {detailParts.map((part) => (
-          <div
-            key={part}
-            className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[#64748b]"
+        {detailParts.map((part) =>
+          canEdit ? (
+            <button
+              key={part}
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="mt-1 block w-full whitespace-pre-wrap rounded-md text-left text-[13px] leading-relaxed text-[#64748b] hover:text-[#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30"
+            >
+              {part}
+            </button>
+          ) : (
+            <div
+              key={part}
+              className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[#64748b]"
+            >
+              {part}
+            </div>
+          ),
+        )}
+        {canEdit && detailParts.length === 0 && (
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="mt-1 text-left text-[13px] text-[#94a3b8] hover:text-[#4f46e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30"
           >
-            {part}
-          </div>
-        ))}
+            Add a note
+          </button>
+        )}
       </div>
       <time
         dateTime={a.occurredAt.toISOString()}
@@ -193,6 +216,16 @@ export function ActivityRow({
       >
         {formatTime(a.occurredAt)}
       </time>
+      {canEdit ? (
+        <button
+          type="button"
+          aria-label="Edit activity"
+          onClick={() => setEditOpen(true)}
+          className="absolute top-2 right-7 flex size-7 items-center justify-center rounded-md text-[#94a3b8] opacity-0 transition-opacity hover:bg-[#f1f5f9] hover:text-[#0f172a] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 group-hover:opacity-100"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+      ) : null}
       {canRemove ? (
         <button
           type="button"
@@ -202,6 +235,15 @@ export function ActivityRow({
         >
           <Trash2 className="size-3.5" />
         </button>
+      ) : null}
+      {editOpen && canEdit ? (
+        <HistoryActivityEditDialog
+          activity={a}
+          prospectId={prospectId}
+          title={titleFor(a, taskLabel)}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
       ) : null}
     </div>
   )
