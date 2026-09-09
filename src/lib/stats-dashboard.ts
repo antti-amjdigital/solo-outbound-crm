@@ -27,17 +27,13 @@ import {
   type InstantRange,
   type StatsFilters,
 } from "@/lib/stats-filters"
+import {
+  loadActivityWindows,
+  loadSequenceSummaries,
+  type ActivityRow,
+} from "@/lib/stats-loaders"
 import { buildHeatmap, buildWeekly } from "@/lib/stats-series"
 import type { FunnelStages } from "@/lib/stats-constants"
-
-type ActivityRow = {
-  type: ActivityType
-  outcome: CallOutcome | null
-  prospectId: string
-  stepOrder: number | null
-  sequenceId: string | null
-  occurredAt: Date
-}
 
 export type StatsDashboard = {
   filters: StatsFilters
@@ -63,26 +59,6 @@ export type StatsDashboard = {
   meetingSpark: SparkPoint[]
   dialsPerMeetingSpark: SparkPoint[]
   weekdays: number
-}
-
-async function loadActivities(
-  range: InstantRange,
-  sequenceId: string | "all",
-): Promise<ActivityRow[]> {
-  return db.activity.findMany({
-    where: {
-      occurredAt: { gte: range.start, lt: range.end },
-      ...(sequenceId !== "all" ? { sequenceId } : {}),
-    },
-    select: {
-      type: true,
-      outcome: true,
-      prospectId: true,
-      stepOrder: true,
-      sequenceId: true,
-      occurredAt: true,
-    },
-  })
 }
 
 /** Trailing N weeks ending today — for consistency charts, not the KPI period. */
@@ -122,29 +98,6 @@ function buildFunnelStages(
   }
 }
 
-/** Sequences ordered by most recent enrollment activity. */
-async function loadSequencesByRecency(): Promise<{ id: string; name: string }[]> {
-  const rows = await db.sequence.findMany({
-    select: {
-      id: true,
-      name: true,
-      enrollments: {
-        select: { startedAt: true },
-        orderBy: { startedAt: "desc" },
-        take: 1,
-      },
-    },
-  })
-  return rows
-    .sort((a, b) => {
-      const at = a.enrollments[0]?.startedAt.getTime() ?? 0
-      const bt = b.enrollments[0]?.startedAt.getTime() ?? 0
-      if (bt !== at) return bt - at
-      return a.name.localeCompare(b.name)
-    })
-    .map(({ id, name }) => ({ id, name }))
-}
-
 export async function getStatsDashboard(
   raw: Record<string, string | string[] | undefined>,
 ): Promise<StatsDashboard> {
@@ -154,33 +107,26 @@ export async function getStatsDashboard(
   const chartRange = trailingWeeksRange(13)
   const seqId = filters.sequenceId
 
-  const sequences = await loadSequencesByRecency()
+  // Everything the page needs, in a single parallel round trip.
+  const [windows, summaries, newEnrollments] = await Promise.all([
+    loadActivityWindows({ current: range, prev, chart: chartRange }, seqId),
+    loadSequenceSummaries(),
+    db.enrollment.count({
+      where: {
+        startedAt: { gte: range.start, lt: range.end },
+        ...(seqId !== "all" ? { sequenceId: seqId } : {}),
+      },
+    }),
+  ])
+  const { current: currentRows, prev: prevRows, chart: chartRows } = windows
+
+  const sequences = summaries.map(({ id, name }) => ({ id, name }))
   const activeSeq =
     seqId !== "all"
-      ? sequences.find((s) => s.id === seqId) ?? sequences[0] ?? null
-      : sequences[0] ?? null
-
-  const [currentRows, prevRows, chartRows, newEnrollments, funnelSteps, enrolledForFunnel] =
-    await Promise.all([
-      loadActivities(range, seqId),
-      loadActivities(prev, seqId),
-      loadActivities(chartRange, seqId),
-      db.enrollment.count({
-        where: {
-          startedAt: { gte: range.start, lt: range.end },
-          ...(seqId !== "all" ? { sequenceId: seqId } : {}),
-        },
-      }),
-      activeSeq
-        ? db.sequenceStep.findMany({
-            where: { sequenceId: activeSeq.id },
-            orderBy: { order: "asc" },
-          })
-        : Promise.resolve([]),
-      activeSeq
-        ? db.enrollment.count({ where: { sequenceId: activeSeq.id } })
-        : Promise.resolve(0),
-    ])
+      ? summaries.find((s) => s.id === seqId) ?? summaries[0] ?? null
+      : summaries[0] ?? null
+  const funnelSteps = activeSeq?.steps ?? []
+  const enrolledForFunnel = activeSeq?.enrolled ?? 0
 
   const funnelRows =
     activeSeq && seqId === "all"

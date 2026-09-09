@@ -11,6 +11,10 @@ import { appToday, formatCalendarDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { overdueDays } from "@/lib/queue-filters"
 import {
+  loadProspectPageRelations,
+  loadSequences,
+} from "@/lib/prospect-list-loaders"
+import {
   parseProspectFilters,
   type ProspectListFilters,
   type ProspectSort,
@@ -98,15 +102,12 @@ export const getProspectList = cache(async function getProspectList(
     where.tasks = { none: { status: TaskStatus.OPEN } }
   }
 
-  const [totalUnfiltered, total, sequences, sourceRows, prospects] =
+  // Wave 1: the page of prospects plus everything independent of it.
+  const [totalUnfiltered, total, allSequences, sourceRows, prospects] =
     await Promise.all([
       db.prospect.count(),
       db.prospect.count({ where }),
-      db.sequence.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true },
-        orderBy: { name: "asc" },
-      }),
+      loadSequences(),
       db.prospect.findMany({
         where: { source: { not: null } },
         select: { source: true },
@@ -117,30 +118,15 @@ export const getProspectList = cache(async function getProspectList(
         orderBy: sortClause(filters.sort, filters.dir),
         skip: (filters.page - 1) * filters.pageSize,
         take: filters.pageSize,
-        include: {
-          enrollments: {
-            where: { state: { in: [EnrollState.RUNNING, EnrollState.PAUSED] } },
-            orderBy: { startedAt: "desc" },
-            take: 1,
-            include: {
-              sequence: {
-                select: {
-                  name: true,
-                  steps: { select: { order: true }, orderBy: { order: "asc" } },
-                },
-              },
-            },
-          },
-          tasks: {
-            where: { status: TaskStatus.OPEN },
-            orderBy: { dueDate: "asc" },
-            take: 1,
-          },
-          activities: {
-            orderBy: { occurredAt: "desc" },
-            take: 1,
-            select: { occurredAt: true },
-          },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          title: true,
+          company: true,
+          phone: true,
+          status: true,
+          deadReason: true,
           _count: {
             select: { activities: { where: { type: ActivityType.CALL } } },
           },
@@ -148,9 +134,15 @@ export const getProspectList = cache(async function getProspectList(
       }),
     ])
 
+  // Wave 2: current enrollment / next task / last activity for just this page.
+  const { enrollmentByProspect, nextTaskByProspect, lastActivityByProspect } =
+    await loadProspectPageRelations(prospects.map((p) => p.id))
+  const sequenceById = new Map(allSequences.map((s) => [s.id, s]))
+
   let rows: ProspectListRow[] = prospects.map((p) => {
-    const enr = p.enrollments[0] ?? null
-    const task = p.tasks[0] ?? null
+    const enr = enrollmentByProspect.get(p.id) ?? null
+    const seq = enr ? sequenceById.get(enr.sequenceId) : undefined
+    const task = nextTaskByProspect.get(p.id) ?? null
     return {
       id: p.id,
       firstName: p.firstName,
@@ -160,10 +152,10 @@ export const getProspectList = cache(async function getProspectList(
       phone: p.phone,
       status: p.status,
       deadReason: p.deadReason,
-      sequenceName: enr?.sequence.name ?? null,
+      sequenceName: seq?.name ?? null,
       enrollmentState: enr?.state ?? null,
       stepOrder: task?.stepOrder ?? (enr?.currentStepOrder || null),
-      stepTotal: enr?.sequence.steps.length ?? 0,
+      stepTotal: seq?.stepTotal ?? 0,
       nextTask: task
         ? {
             id: task.id,
@@ -174,7 +166,7 @@ export const getProspectList = cache(async function getProspectList(
           }
         : null,
       dials: p._count.activities,
-      lastActivityAt: p.activities[0]?.occurredAt ?? null,
+      lastActivityAt: lastActivityByProspect.get(p.id) ?? null,
     }
   })
 
@@ -195,7 +187,9 @@ export const getProspectList = cache(async function getProspectList(
     total,
     totalUnfiltered,
     filters,
-    sequences,
+    sequences: allSequences
+      .filter((s) => s.isActive)
+      .map(({ id, name }) => ({ id, name })),
     sources: sourceRows
       .map((s) => s.source)
       .filter((s): s is string => Boolean(s))

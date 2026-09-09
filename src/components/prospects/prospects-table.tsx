@@ -18,6 +18,7 @@ type Props = {
   onSelectedChange: (next: Set<string>) => void
   onEnroll: (id: string) => void
   totalUnfiltered: number
+  openId?: string
 }
 
 const COLS =
@@ -141,6 +142,7 @@ export function ProspectsTable({
   onSelectedChange,
   onEnroll,
   totalUnfiltered,
+  openId,
 }: Props) {
   const allIds = rows.map((r) => r.id)
   const allSelected =
@@ -206,6 +208,7 @@ export function ProspectsTable({
             key={row.id}
             row={row}
             selected={selected.has(row.id)}
+            open={openId === row.id}
             onToggle={(checked) => toggle(row.id, checked)}
             onEnroll={() => onEnroll(row.id)}
           />

@@ -147,63 +147,32 @@ export async function deleteProspectsAction(ids: string[]): Promise<ActionResult
   }
 }
 
-export async function upsertPinnedNoteAction(
+export async function deleteActivityAction(
+  activityId: string,
   prospectId: string,
-  body: string,
-  noteId?: string,
 ): Promise<ActionResult> {
   try {
-    const trimmed = body.trim()
-    if (!trimmed) return { ok: false, error: "Note cannot be empty" }
-    if (noteId) {
-      await db.note.update({ where: { id: noteId }, data: { body: trimmed } })
-    } else {
-      await db.note.create({ data: { prospectId, body: trimmed } })
-    }
-    revalidateProspects(prospectId)
-    return { ok: true }
-  } catch (error) {
-    return fail(error)
-  }
-}
-
-export async function addNoteAction(
-  prospectId: string,
-  body: string,
-  options: { pinned?: boolean } = {},
-): Promise<ActionResult> {
-  try {
-    const trimmed = body.trim()
-    if (!trimmed) return { ok: false, error: "Note cannot be empty" }
-
-    await db.activity.create({
-      data: { prospectId, type: ActivityType.NOTE, note: trimmed },
+    const activity = await db.activity.findFirst({
+      where: { id: activityId, prospectId },
     })
-
-    if (options.pinned) {
-      const existing = await db.note.findFirst({
-        where: { prospectId },
-        orderBy: { updatedAt: "desc" },
-      })
-      if (existing) {
-        await db.note.update({ where: { id: existing.id }, data: { body: trimmed } })
-      } else {
-        await db.note.create({ data: { prospectId, body: trimmed } })
-      }
+    if (!activity) return { ok: false, error: "Activity not found" }
+    if (
+      activity.type === ActivityType.STATUS_CHANGE &&
+      activity.note === "Prospect created"
+    ) {
+      return { ok: false, error: "Cannot remove prospect creation" }
     }
 
+    await db.task.updateMany({
+      where: { activityId },
+      data: { activityId: null },
+    })
+    await db.activity.delete({ where: { id: activityId } })
     revalidateProspects(prospectId)
     return { ok: true }
   } catch (error) {
     return fail(error)
   }
-}
-
-export async function addTimelineNoteAction(
-  prospectId: string,
-  body: string,
-): Promise<ActionResult> {
-  return addNoteAction(prospectId, body, { pinned: false })
 }
 
 export async function theyRepliedAction(

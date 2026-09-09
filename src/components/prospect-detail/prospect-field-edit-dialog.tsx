@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { updateProspectAction } from "@/actions/prospects"
+import { useModEnterSubmit } from "@/hooks/use-mod-enter"
 
 export type FieldEditMode = "linkedin" | "title-company" | "email" | "phone"
 
@@ -74,6 +75,8 @@ export function ProspectFieldEditDialog({
       }
     })
   }
+
+  useModEnterSubmit(save, mode != null)
 
   return (
     <Dialog open={mode != null} onOpenChange={(open) => !open && onClose()}>

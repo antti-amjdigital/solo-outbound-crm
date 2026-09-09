@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DeleteProspectsDialog } from "@/components/prospects/delete-prospects-dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -55,6 +56,9 @@ export function BulkBar({
   const [pending, start] = useTransition()
   const [sequenceId, setSequenceId] = useState(sequences[0]?.id ?? "")
   const [spreadDays, setSpreadDays] = useState("1")
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const count = selectedIds.length
+  const noun = count === 1 ? "prospect" : "prospects"
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     start(async () => {
@@ -111,9 +115,7 @@ export function BulkBar({
           variant="destructive"
           disabled={pending}
           className="h-[38px] rounded-lg px-4 text-[13px] font-semibold"
-          onClick={() =>
-            run(() => deleteProspectsAction(selectedIds), "Deleted")
-          }
+          onClick={() => setDeleteOpen(true)}
         >
           Delete
         </Button>
@@ -125,6 +127,32 @@ export function BulkBar({
           Clear selection
         </Button>
       </div>
+
+      <DeleteProspectsDialog
+        open={deleteOpen}
+        count={count}
+        pending={pending}
+        onOpenChange={setDeleteOpen}
+        onMarkDead={() => {
+          setDeleteOpen(false)
+          run(
+            () =>
+              setProspectStatusAction(
+                selectedIds,
+                ProspectStatus.DEAD,
+                "not_interested",
+              ),
+            `Marked ${count} Dead`,
+          )
+        }}
+        onDelete={() => {
+          setDeleteOpen(false)
+          run(
+            () => deleteProspectsAction(selectedIds),
+            `Deleted ${count} ${noun}`,
+          )
+        }}
+      />
 
       <Dialog open={enrollOpen} onOpenChange={onEnrollOpenChange}>
         <DialogContent className="sm:max-w-md">

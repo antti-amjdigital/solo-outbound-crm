@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { StepType } from "@prisma/client"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,8 @@ import {
 } from "@/components/today/labels"
 import { StatusPill } from "@/components/prospects/status-pill"
 import { AddProspectDialog } from "@/components/prospects/add-prospect-dialog"
+import { useIntentPrefetch } from "@/hooks/use-intent-prefetch"
+import { prospectPanelHref } from "@/lib/prospect-href"
 import {
   formatRelativeDue,
   type ProspectListRow,
@@ -60,12 +62,17 @@ function formatActivity(row: ProspectListRow): {
 type Props = {
   row: ProspectListRow
   selected: boolean
+  open?: boolean
   onToggle: (checked: boolean) => void
   onEnroll: () => void
 }
 
-export function ProspectRow({ row, selected, onToggle, onEnroll }: Props) {
+export function ProspectRow({ row, selected, open = false, onToggle, onEnroll }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const href = prospectPanelHref(row.id, { pathname, search: searchParams })
+  const prefetch = useIntentPrefetch(href)
   const name = prospectDisplayName(row)
   const activity = formatActivity(row)
   const overdue = (row.nextTask?.overdueDays ?? 0) > 0
@@ -77,12 +84,15 @@ export function ProspectRow({ row, selected, onToggle, onEnroll }: Props) {
       className={cn(
         "group/row grid h-16 cursor-pointer grid-cols-[40px_1.5fr_1.1fr_1fr_0.8fr_1.1fr_1fr_0.9fr] items-center gap-3.5 border-t border-[#f5f7fa] px-5 outline-none first:border-t-0 hover:bg-stats-canvas focus-visible:bg-stats-canvas focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stats-indigo-700/30",
         selected && "bg-[#eef2ff]/40",
+        open && "bg-[#eef2ff]/70",
       )}
-      onClick={() => router.push(`/prospects/${row.id}`)}
+      onMouseEnter={prefetch}
+      onFocus={prefetch}
+      onClick={() => router.push(href, { scroll: false })}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault()
-          router.push(`/prospects/${row.id}`)
+          router.push(href, { scroll: false })
         }
       }}
     >

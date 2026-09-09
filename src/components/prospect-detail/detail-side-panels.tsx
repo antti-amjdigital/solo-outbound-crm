@@ -16,7 +16,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ProspectSequenceBlock } from "@/components/prospect-detail/prospect-sequence-block"
-import { upsertPinnedNoteAction } from "@/actions/prospects"
+import { upsertPinnedNoteAction } from "@/actions/notes"
 import type { ProspectDetail } from "@/lib/prospect-detail-query"
 import { cn } from "@/lib/utils"
 
@@ -46,7 +46,7 @@ export function DetailSidePanels({ data }: { data: ProspectDetail }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [editing, setEditing] = useState(false)
-  const pinned = notes[0]
+  const pinned = notes.find((n) => n.pinned)
   const [body, setBody] = useState(pinned?.body ?? "")
 
   return (

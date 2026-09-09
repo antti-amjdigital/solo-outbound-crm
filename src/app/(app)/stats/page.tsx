@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { GlobalSearch } from "@/components/global-search/global-search"
+import { ProspectPanelSlot } from "@/components/prospect-detail/prospect-panel-slot"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CallActivityCard } from "@/components/stats/dials-chart"
 import { FunnelChart } from "@/components/stats/funnel-chart"
@@ -55,6 +56,10 @@ export default async function StatsPage({
 
       <Suspense fallback={<StatsSkeleton />}>
         <StatsBody raw={raw} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ProspectPanelSlot raw={raw} />
       </Suspense>
     </div>
   )

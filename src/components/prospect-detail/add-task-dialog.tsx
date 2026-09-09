@@ -41,6 +41,7 @@ import {
 } from "@/components/prospect-detail/add-task-prospect-picker"
 import { createTaskAction } from "@/actions/tasks"
 import type { TaskProspectOption } from "@/actions/prospects"
+import { isModEnter, useModEnterSubmit } from "@/hooks/use-mod-enter"
 import {
   appToday,
   formatCalendarDate,
@@ -167,6 +168,7 @@ export function AddTaskDialog({ open, onOpenChange, initialProspect }: Props) {
   const displayName = nameTouched ? name : defaultName
 
   function onNameKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (isModEnter(e)) return
     if (nameTouched) return
     if (e.key === "Backspace" || e.key === "Delete") {
       e.preventDefault()
@@ -190,7 +192,7 @@ export function AddTaskDialog({ open, onOpenChange, initialProspect }: Props) {
 
   function save(e?: FormEvent) {
     e?.preventDefault()
-    if (!prospect) return
+    if (!prospect || pending) return
     const resolvedName = nameTouched ? name.trim() : defaultName
     start(async () => {
       const res = await createTaskAction({
@@ -208,6 +210,8 @@ export function AddTaskDialog({ open, onOpenChange, initialProspect }: Props) {
       }
     })
   }
+
+  useModEnterSubmit(() => save(), open)
 
   return (
     <TooltipProvider>

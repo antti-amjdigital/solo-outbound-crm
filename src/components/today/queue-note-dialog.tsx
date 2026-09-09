@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
-import { addTimelineNoteAction } from "@/actions/prospects"
+import { addTimelineNoteAction } from "@/actions/notes"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { useModEnterSubmit } from "@/hooks/use-mod-enter"
 
 type Props = {
   open: boolean
@@ -43,6 +44,8 @@ export function QueueNoteDialog({
     })
   }
 
+  useModEnterSubmit(save, open)
+
   return (
     <Dialog
       open={open}
@@ -61,12 +64,6 @@ export function QueueNoteDialog({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className="min-h-24 text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              save()
-            }
-          }}
         />
         <DialogFooter>
           <Button

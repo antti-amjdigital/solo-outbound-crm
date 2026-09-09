@@ -11,6 +11,7 @@ import {
 } from "@/actions/enrollments"
 import { formatRelativeDue } from "@/lib/prospect-queries"
 import type { ProspectDetail } from "@/lib/prospect-detail-query"
+import { taskDisplayName } from "@/lib/task-label"
 
 export function ProspectSequenceBlock({ data }: { data: ProspectDetail }) {
   const { enrollment, openTask } = data
@@ -44,7 +45,7 @@ export function ProspectSequenceBlock({ data }: { data: ProspectDetail }) {
         {openTask && (
           <>
             {" "}
-            · next: {openTask.label},{" "}
+            · next: {taskDisplayName(openTask.label)},{" "}
             {formatRelativeDue(openTask.dueDate).toLowerCase()}
           </>
         )}

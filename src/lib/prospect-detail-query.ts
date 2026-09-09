@@ -2,13 +2,12 @@ import {
   ActivityType,
   EnrollState,
   StepType,
-  TaskStatus,
   type Activity,
   type Note,
   type Prospect,
 } from "@prisma/client"
 import { appToday } from "@/lib/dates"
-import { db } from "@/lib/db"
+import { loadProspectDetail } from "@/lib/prospect-detail-loaders"
 import {
   parseHistoryFilter,
   type HistoryFilter,
@@ -77,36 +76,10 @@ export async function getProspectDetail(
   raw: Record<string, string | string[] | undefined> = {},
 ): Promise<ProspectDetail | null> {
   const historyFilter = parseHistoryFilter(raw)
-  const prospect = await db.prospect.findUnique({
-    where: { id },
-    include: {
-      notes: { orderBy: { updatedAt: "desc" } },
-      activities: { orderBy: { occurredAt: "desc" }, take: 200 },
-      enrollments: {
-        orderBy: { startedAt: "desc" },
-        take: 1,
-        include: {
-          sequence: {
-            select: {
-              id: true,
-              name: true,
-              steps: {
-                select: { order: true, template: true },
-                orderBy: { order: "asc" },
-              },
-            },
-          },
-        },
-      },
-      tasks: {
-        where: { status: TaskStatus.OPEN },
-        orderBy: { dueDate: "asc" },
-      },
-    },
-  })
-  if (!prospect) return null
-
-  const enr = prospect.enrollments[0] ?? null
+  const data = await loadProspectDetail(id)
+  if (!data) return null
+  const { prospect, notes, activities, enr, tasks, completedLinked, sequences } =
+    data
 
   function toOpenTask(task: {
     id: string
@@ -131,13 +104,13 @@ export async function getProspectDetail(
     }
   }
 
-  const allOpen = prospect.tasks.map(toOpenTask)
+  const allOpen = tasks.map(toOpenTask)
   const today = appToday()
   const dueToday = allOpen.filter((t) => t.dueDate.getTime() <= today.getTime())
   const upcoming = allOpen.filter((t) => t.dueDate.getTime() > today.getTime())
   const open = dueToday[0] ?? upcoming[0] ?? null
 
-  const calls = prospect.activities.filter((a) => a.type === ActivityType.CALL)
+  const calls = activities.filter((a) => a.type === ActivityType.CALL)
   const connects = calls.filter(
     (a) =>
       a.outcome &&
@@ -145,7 +118,7 @@ export async function getProspectDetail(
         a.outcome,
       ),
   )
-  const emails = prospect.activities.filter(
+  const emails = activities.filter(
     (a) =>
       a.type === ActivityType.EMAIL_SENT ||
       a.type === ActivityType.EMAIL_REPLY_SENT ||
@@ -154,35 +127,22 @@ export async function getProspectDetail(
   const lastCall = calls.find((a) => a.outcome)
 
   const counts: Record<HistoryFilter, number> = {
-    all: prospect.activities.length,
+    all: activities.length,
     calls: 0,
     emails: 0,
     notes: 0,
     changes: 0,
   }
-  for (const a of prospect.activities) counts[historyBucket(a)] += 1
+  for (const a of activities) counts[historyBucket(a)] += 1
 
-  const history =
-    historyFilter === "all"
-      ? prospect.activities
-      : prospect.activities.filter((a) => historyBucket(a) === historyFilter)
+  const history = activities
 
-  const completedLinked = await db.task.findMany({
-    where: { prospectId: id, activityId: { not: null } },
-    select: { activityId: true, label: true },
-  })
   const historyTaskLabels: Record<string, string> = {}
   for (const t of completedLinked) {
     if (!t.activityId || !t.label.trim()) continue
     // Full label: first line is the name, remaining lines are task notes.
     historyTaskLabels[t.activityId] = t.label
   }
-
-  const sequences = await db.sequence.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  })
 
   const daysInSequence = enr
     ? Math.max(
@@ -216,7 +176,7 @@ export async function getProspectDetail(
       createdAt: prospect.createdAt,
       updatedAt: prospect.updatedAt,
     },
-    notes: prospect.notes,
+    notes,
     enrollment: enr
       ? {
           id: enr.id,

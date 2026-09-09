@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
+  addBusinessDays,
   appToday,
   formatCalendarDate,
   toCalendarDate,
 } from "@/lib/dates"
-import { addCalendarDays, nextMonday } from "@/lib/queue-filters"
+import { nextMonday } from "@/lib/queue-filters"
 
 type Props = {
   taskId: string
@@ -24,8 +25,19 @@ type Props = {
   onSnooze: (taskId: string, dueDate: string) => void
 }
 
+function weekday(date: Date): string {
+  return date.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" })
+}
+
 export function SnoozeMenu({ taskId, open, onOpenChange, onSnooze }: Props) {
   const [pickOpen, setPickOpen] = useState(false)
+  // "+N days" means business days: a snoozed task never lands on a weekend.
+  const today = appToday()
+  const presets: { label: string; date: Date }[] = [
+    { label: "+1 day", date: addBusinessDays(today, 1) },
+    { label: "+3 days", date: addBusinessDays(today, 3) },
+    { label: "Next Monday", date: nextMonday(today) },
+  ]
 
   function snoozeTo(date: Date) {
     onSnooze(taskId, formatCalendarDate(toCalendarDate(date)))
@@ -50,15 +62,18 @@ export function SnoozeMenu({ taskId, open, onOpenChange, onSnooze }: Props) {
           className="min-w-40"
           onClick={(e) => e.stopPropagation()}
         >
-          <DropdownMenuItem onClick={() => snoozeTo(addCalendarDays(appToday(), 1))}>
-            +1 day
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => snoozeTo(addCalendarDays(appToday(), 3))}>
-            +3 days
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => snoozeTo(nextMonday())}>
-            Next Monday
-          </DropdownMenuItem>
+          {presets.map((p) => (
+            <DropdownMenuItem
+              key={p.label}
+              className="justify-between gap-4"
+              onClick={() => snoozeTo(p.date)}
+            >
+              {p.label}
+              {p.label !== "Next Monday" ? (
+                <span className="text-[11px] text-[#94a3b8]">{weekday(p.date)}</span>
+              ) : null}
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setPickOpen(true)}>
             Pick a date…

@@ -1,62 +1,50 @@
 "use client"
 
-import { CheckIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { focusRing, primaryButton, secondaryButton } from "./styles"
 
+/**
+ * Sits at the bottom of the editor column (inside <main>), so it never
+ * overlaps the nav rail. Exactly two states: saved, or unsaved with actions.
+ */
 export function SaveBar({
-  changes,
+  dirty,
   saving,
   onDiscard,
   onSave,
 }: {
-  changes: string[]
+  dirty: boolean
   saving: boolean
   onDiscard: () => void
   onSave: () => void
 }) {
-  const dirty = changes.length > 0
-
   return (
-    <div className="z-10 flex shrink-0 items-center justify-between gap-3 border-t border-accent-line bg-accent-soft px-4 py-2.5 shadow-[0_-4px_14px_rgba(16,23,42,0.09)]">
-      <div className="flex min-w-0 items-center gap-2.5 text-xs">
-        <span
-          className={
-            dirty
-              ? "size-2 shrink-0 rounded-full bg-primary"
-              : "size-2 shrink-0 rounded-full bg-dim/40"
-          }
-        />
-        {dirty ? (
-          <>
-            <b className="shrink-0 text-ink">
-              {changes.length} unsaved change{changes.length === 1 ? "" : "s"}
-            </b>
-            <span className="truncate text-dim">{changes.join(" · ")}</span>
-          </>
-        ) : (
-          <span className="text-dim">All changes saved</span>
-        )}
-      </div>
-      <div className="flex shrink-0 gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          disabled={!dirty || saving}
-          onClick={onDiscard}
-        >
-          Discard
-        </Button>
-        <Button
-          type="button"
-          size="lg"
-          disabled={!dirty || saving}
-          onClick={onSave}
-        >
-          <CheckIcon className="size-3.5" />
-          {saving ? "Saving…" : "Save changes"}
-        </Button>
-      </div>
+    <div className="flex min-h-[66px] shrink-0 items-center gap-3 border-t border-stats-card-line bg-white px-8 py-3.5">
+      {dirty ? (
+        <>
+          <span className="text-[13px] text-stats-secondary">Unsaved changes</span>
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              disabled={saving}
+              onClick={onDiscard}
+              className={cn(secondaryButton, focusRing)}
+            >
+              Discard
+            </Button>
+            <Button
+              disabled={saving}
+              onClick={onSave}
+              className={cn(primaryButton, focusRing)}
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <span className="text-[13px] text-stats-muted">All changes saved</span>
+      )}
     </div>
   )
 }

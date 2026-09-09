@@ -1,9 +1,12 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import type { GlobalSearchProspectHit } from "@/lib/global-search-query"
 import { prospectDisplayName, prospectInitials } from "@/lib/search"
 import { formatPhoneDisplay } from "@/components/today/labels"
 import { HighlightText } from "@/components/global-search/search-ui-bits"
+import { useIntentPrefetch } from "@/hooks/use-intent-prefetch"
+import { prospectPanelHref } from "@/lib/prospect-href"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -21,7 +24,9 @@ export function GlobalSearchProspectRow({
   optionId,
   onSelect,
 }: Props) {
+  const pathname = usePathname()
   const name = prospectDisplayName(hit)
+  const prefetch = useIntentPrefetch(prospectPanelHref(hit.id, { pathname }))
   const subParts = [hit.company, hit.phone ? formatPhoneDisplay(hit.phone) : null]
     .filter(Boolean)
     .join(" · ")
@@ -37,6 +42,7 @@ export function GlobalSearchProspectRow({
           "flex w-full items-center gap-3 px-4 py-[9px] text-left transition-colors",
           active ? "bg-[#f5f7ff]" : "hover:bg-[#f8fafc]",
         )}
+        onMouseEnter={prefetch}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onSelect}
       >

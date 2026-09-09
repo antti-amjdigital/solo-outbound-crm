@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useHotkeys } from "react-hotkeys-hook"
 import { globalSearchAction } from "@/actions/search"
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/global-search/global-search-dropdown"
 import { SearchIcon } from "@/components/global-search/search-ui-bits"
 import { useRecentSearches } from "@/hooks/use-recent-searches"
+import { prospectPanelHref } from "@/lib/prospect-href"
 import { shouldSearch } from "@/lib/search"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +22,7 @@ type Props = {
 
 export function GlobalSearch({ defaultQuery = "", className }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const requestId = useRef(0)
@@ -98,18 +100,21 @@ export function GlobalSearch({ defaultQuery = "", className }: Props) {
     (id: string, recordQuery: string) => {
       addRecent(recordQuery)
       setOpen(false)
-      router.push(`/prospects/${id}`)
+      router.push(prospectPanelHref(id, { pathname }), { scroll: false })
     },
-    [addRecent, router],
+    [addRecent, pathname, router],
   )
 
   const navigateToNotes = useCallback(
     (prospectId: string, recordQuery: string) => {
       addRecent(recordQuery)
       setOpen(false)
-      router.push(`/prospects/${prospectId}?history=notes`)
+      router.push(
+        prospectPanelHref(prospectId, { pathname, history: "notes" }),
+        { scroll: false },
+      )
     },
-    [addRecent, router],
+    [addRecent, pathname, router],
   )
 
   const navigateToAllResults = useCallback(

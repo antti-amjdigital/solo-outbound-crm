@@ -66,7 +66,7 @@ function IconGear({ className }: { className?: string }) {
 
 function buildNavItems(sequenceHref: string) {
   return [
-    { href: "/", label: "Today", icon: IconToday, match: (p: string) => p === "/" },
+    { href: "/", label: "Tasks", icon: IconToday, match: (p: string) => p === "/" },
     {
       href: "/prospects",
       label: "Prospects",

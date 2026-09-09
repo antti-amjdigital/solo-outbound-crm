@@ -73,6 +73,14 @@
   --color-stats-indigo-400: var(--stats-indigo-400);
   --color-stats-indigo-300: var(--stats-indigo-300);
   --color-stats-indigo-200: var(--stats-indigo-200);
+  /* Sequence editor */
+  --color-seq-name-ink: var(--seq-name-ink);
+  --color-seq-button-ink: var(--seq-button-ink);
+  --color-seq-chip-indigo: var(--seq-chip-indigo);
+  --color-seq-teal: var(--seq-teal);
+  --color-seq-teal-soft: var(--seq-teal-soft);
+  --color-seq-teal-line: var(--seq-teal-line);
+  --color-seq-teal-ink: var(--seq-teal-ink);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -120,6 +128,14 @@
   --stats-indigo-400: #818cf8;
   --stats-indigo-300: #a5b4fc;
   --stats-indigo-200: #c7d2fe;
+  /* ---- sequence editor ---- */
+  --seq-name-ink: #1e293b;
+  --seq-button-ink: #475569;
+  --seq-chip-indigo: #eef2ff;
+  --seq-teal: #0d9488;
+  --seq-teal-soft: #ccfbf1;
+  --seq-teal-line: #99f6e4;
+  --seq-teal-ink: #0f766e;
 
   /* ---- shadcn token mapping ---- */
   --background: #ffffff;
@@ -209,5 +225,70 @@
 
 [data-queue-row][data-exiting="true"] [data-queue-check] {
   animation: queue-check-pop 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Shared list enter — logged activity / completed task settles into place */
+@keyframes list-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-enter-row][data-entering="true"] {
+  animation: list-row-enter 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-enter-row][data-entering="true"] {
+    animation: none;
+  }
+}
+
+/* Prospect sheet — Pipedrive-style close: lift + spin on hover */
+[data-sheet-close] {
+  transition:
+    transform 200ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-sheet-close] [data-sheet-close-icon] {
+  transition: transform 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+[data-sheet-close]:hover {
+  background-color: #0f172a;
+  color: #ffffff;
+  transform: scale(1.08);
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+[data-sheet-close]:hover [data-sheet-close-icon] {
+  transform: rotate(90deg);
+}
+
+[data-sheet-close]:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sheet-close],
+  [data-sheet-close] [data-sheet-close-icon] {
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  [data-sheet-close]:hover,
+  [data-sheet-close]:hover [data-sheet-close-icon],
+  [data-sheet-close]:active {
+    transform: none;
+  }
 }
 

@@ -106,12 +106,6 @@ export function useTodayHotkeys({
     "s",
     (e) => {
       if (!selected) return
-      if (
-        selected.type === StepType.EMAIL ||
-        selected.type === StepType.EMAIL_REPLY
-      ) {
-        return
-      }
       e.preventDefault()
       setSnoozeId(selected.id)
     },

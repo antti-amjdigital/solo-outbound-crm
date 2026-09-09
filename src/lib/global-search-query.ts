@@ -139,11 +139,22 @@ export async function globalSearchQuery(q: string): Promise<GlobalSearchResult> 
 
   const digits = normalizePhone(trimmed)
   const today = appToday()
+  const textWhere = buildProspectSearchWhere(trimmed)
 
-  const [textProspects, phoneIds, diacriticIds, pinnedNotes, activityNotes] =
+  // Hits and totals are independent — one round trip for all of them.
+  const [
+    textProspects,
+    phoneIds,
+    diacriticIds,
+    pinnedNotes,
+    activityNotes,
+    prospectTotal,
+    noteTotalPinned,
+    noteTotalActivity,
+  ] =
     await Promise.all([
       db.prospect.findMany({
-        where: buildProspectSearchWhere(trimmed),
+        where: textWhere,
         select: {
           id: true,
           firstName: true,
@@ -195,6 +206,13 @@ export async function globalSearchQuery(q: string): Promise<GlobalSearchResult> 
         },
         orderBy: { occurredAt: "desc" },
         take: NOTE_LIMIT * 2,
+      }),
+      db.prospect.count({ where: textWhere }),
+      db.note.count({
+        where: { body: { contains: trimmed, mode: "insensitive" } },
+      }),
+      db.activity.count({
+        where: { note: { not: null, contains: trimmed, mode: "insensitive" } },
       }),
     ])
 
@@ -287,16 +305,6 @@ export async function globalSearchQuery(q: string): Promise<GlobalSearchResult> 
       if (noteHits.length >= NOTE_LIMIT) break
     }
   }
-
-  const [prospectTotal, noteTotalPinned, noteTotalActivity] = await Promise.all([
-    db.prospect.count({ where: buildProspectSearchWhere(trimmed) }),
-    db.note.count({
-      where: { body: { contains: trimmed, mode: "insensitive" } },
-    }),
-    db.activity.count({
-      where: { note: { not: null, contains: trimmed, mode: "insensitive" } },
-    }),
-  ])
 
   return {
     prospects: prospectHits,

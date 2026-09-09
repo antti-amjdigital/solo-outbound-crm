@@ -3,11 +3,17 @@ import {
   EnrollState,
   StepType,
   TaskStatus,
+  type Prisma,
   type Prospect,
   type Task,
 } from "@prisma/client"
 import { appToday, formatCalendarDate } from "@/lib/dates"
 import { db } from "@/lib/db"
+import {
+  loadQueueContext,
+  stepKey,
+  type QueueContext,
+} from "@/lib/queue-loaders"
 import {
   addCalendarDays,
   appDayBounds,
@@ -68,14 +74,7 @@ export type TodayQueueResult = {
   filters: TodayQueueFilters
 }
 
-type TaskRow = Task & {
-  prospect: TodayQueueItem["prospect"] & {
-    activities: { outcome: CallOutcome | null }[]
-  }
-  enrollment: {
-    sequence: { steps: { order: number; template: string | null }[] }
-  } | null
-}
+type TaskRow = Task & { prospect: TodayQueueItem["prospect"] }
 
 function typeBucket(
   type: StepType,
@@ -92,8 +91,14 @@ function matchesType(type: StepType, filter: QueueTypeFilter): boolean {
   return type === TYPE_MAP[filter]
 }
 
-function toItem(task: TaskRow): TodayQueueItem {
-  const step = task.enrollment?.sequence.steps.find((s) => s.order === task.stepOrder)
+function toItem(task: TaskRow, ctx: QueueContext): TodayQueueItem {
+  const sequenceId = task.enrollmentId
+    ? ctx.sequenceIdByEnrollment.get(task.enrollmentId)
+    : undefined
+  const template =
+    sequenceId && task.stepOrder != null
+      ? ctx.templateBySequenceStep.get(stepKey(sequenceId, task.stepOrder))
+      : undefined
   return {
     id: task.id,
     type: task.type,
@@ -102,7 +107,7 @@ function toItem(task: TaskRow): TodayQueueItem {
     status: task.status,
     completedAt: task.completedAt,
     stepOrder: task.stepOrder,
-    template: step?.template ?? null,
+    template: template ?? null,
     prospect: {
       id: task.prospect.id,
       firstName: task.prospect.firstName,
@@ -112,7 +117,7 @@ function toItem(task: TaskRow): TodayQueueItem {
       phone: task.prospect.phone,
       linkedin: task.prospect.linkedin,
     },
-    lastOutcome: task.prospect.activities[0]?.outcome ?? null,
+    lastOutcome: ctx.lastOutcomeByProspect.get(task.prospect.id) ?? null,
     hasActiveSequence: task.enrollmentId != null,
   }
 }
@@ -126,20 +131,6 @@ const prospectInclude = {
     email: true,
     phone: true,
     linkedin: true,
-    activities: {
-      where: { outcome: { not: null } },
-      orderBy: { occurredAt: "desc" as const },
-      take: 1,
-      select: { outcome: true },
-    },
-  },
-}
-
-const enrollmentInclude = {
-  select: {
-    sequence: {
-      select: { steps: { select: { order: true, template: true } } },
-    },
   },
 }
 
@@ -150,26 +141,32 @@ export async function getTodayQueue(
   const today = appToday()
   const { start: dayStart, end: dayEnd } = appDayBounds(today)
 
-  const [openRows, doneRows] = await Promise.all([
+  const openWhere: Prisma.TaskWhereInput = {
+    status: TaskStatus.OPEN,
+    OR: [{ enrollmentId: null }, { enrollment: { state: EnrollState.RUNNING } }],
+  }
+  const doneWhere: Prisma.TaskWhereInput = {
+    status: TaskStatus.DONE,
+    completedAt: { gte: dayStart, lt: dayEnd },
+  }
+
+  // Everything depends only on the filters, not on the task rows, so it all
+  // goes out in one parallel wave instead of nested relation round trips.
+  const [openRows, doneRows, ctx] = await Promise.all([
     db.task.findMany({
-      where: {
-        status: TaskStatus.OPEN,
-        OR: [{ enrollmentId: null }, { enrollment: { state: EnrollState.RUNNING } }],
-      },
-      include: { prospect: prospectInclude, enrollment: enrollmentInclude },
+      where: openWhere,
+      include: { prospect: prospectInclude },
       orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
     }),
     db.task.findMany({
-      where: {
-        status: TaskStatus.DONE,
-        completedAt: { gte: dayStart, lt: dayEnd },
-      },
-      include: { prospect: prospectInclude, enrollment: enrollmentInclude },
+      where: doneWhere,
+      include: { prospect: prospectInclude },
       orderBy: { completedAt: "desc" },
     }),
+    loadQueueContext([openWhere, doneWhere]),
   ])
 
-  const openItems = (openRows as unknown as TaskRow[]).map(toItem)
+  const openItems = openRows.map((t) => toItem(t, ctx))
   const rangeSpec = dueRange(filters.range, today, filters.from, filters.to)
 
   const inRange = (due: Date) => {
@@ -204,14 +201,14 @@ export async function getTodayQueue(
   const open = openItems.filter(
     (t) => matchesType(t.type, filters.type) && inRange(t.dueDate),
   )
-  const done = (doneRows as unknown as TaskRow[])
-    .map(toItem)
+  const done = doneRows
+    .map((t) => toItem(t, ctx))
     .filter((t) => matchesType(t.type, filters.type))
 
   const todayOpenCount = openItems.filter(
     (t) => formatCalendarDate(t.dueDate) === todayKey,
   ).length
-  const todayDoneCount = (doneRows as unknown as TaskRow[]).length
+  const todayDoneCount = doneRows.length
   const todayProgress: TodayProgress = {
     done: todayDoneCount,
     total: todayOpenCount + todayDoneCount,

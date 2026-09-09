@@ -1,59 +1,53 @@
 "use client"
 
 import { StepType } from "@prisma/client"
-import { ChevronUpIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { MERGE_TAGS } from "./types"
+import { cn } from "@/lib/utils"
+import { focusRing } from "./styles"
+import { MERGE_TAGS, contentNoun } from "./types"
 
 export function TemplatePanel({
   type,
   template,
   onChange,
-  onCollapse,
 }: {
   type: StepType
   template: string | null
   onChange: (template: string) => void
-  onCollapse: () => void
 }) {
   const isEmail = type === StepType.EMAIL || type === StepType.EMAIL_REPLY
+  const noun = contentNoun(type)
+  const title = `${noun[0].toUpperCase()}${noun.slice(1)}`
 
   return (
-    <div className="col-span-full mt-2.5 border-t border-line-soft pt-3">
-      <p className="mb-2 text-[11px] text-dim">
-        {isEmail ? "Email template" : "Script"}{" "}
-        <span className="text-dim/80">— copied when you open this task</span>
+    <div className="mt-3.5 border-t border-stats-grid pt-3.5">
+      <p className="mb-2 text-xs text-stats-muted">
+        {title} — copied to the clipboard when you open this task
       </p>
       <Textarea
         value={template ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[88px] text-xs"
+        aria-label={title}
+        className="min-h-[96px] rounded-lg border-stats-picker-line text-[13px] text-stats-ink focus-visible:border-stats-indigo-700 focus-visible:ring-stats-indigo-700/30"
         placeholder={
           isEmail ? "Subject: …\n\nHei {{first_name}},…" : "Talking points…"
         }
       />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-dim">Click to insert</span>
+        <span className="text-xs text-stats-muted">Insert</span>
         {MERGE_TAGS.map((tag) => (
           <button
             key={tag}
             type="button"
             onClick={() => onChange(`${template ?? ""}${tag}`)}
-            className="rounded border border-accent-line bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] text-primary"
+            className={cn(
+              "rounded-md border border-stats-indigo-200 bg-seq-chip-indigo px-1.5 py-0.5 font-mono text-[11px] text-stats-indigo-700 tabular-nums hover:bg-stats-indigo-200/40",
+              focusRing,
+            )}
           >
             {tag}
           </button>
         ))}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={onCollapse}
-        >
-          Collapse <ChevronUpIcon className="size-3.5" />
-        </Button>
       </div>
     </div>
   )

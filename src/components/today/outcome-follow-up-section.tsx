@@ -5,22 +5,32 @@ import { CallOutcome } from "@prisma/client"
 import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
+  addBusinessDays,
   appToday,
   formatCalendarDate,
   toCalendarDate,
 } from "@/lib/dates"
-import { addCalendarDays, nextMonday } from "@/lib/queue-filters"
+import { nextMonday } from "@/lib/queue-filters"
 import { cn } from "@/lib/utils"
 
 export type FollowUpChoice = "none" | "tomorrow" | "in3days" | "nextweek" | "pick"
 
 const OPTIONS: { value: FollowUpChoice; label: string }[] = [
   { value: "none", label: "None" },
-  { value: "tomorrow", label: "Tomorrow" },
+  { value: "tomorrow", label: "Next day" },
   { value: "in3days", label: "In 3 days" },
   { value: "nextweek", label: "Next week" },
   { value: "pick", label: "Pick date…" },
 ]
+
+/** Short weekday hint so "Next day" on a Friday visibly reads "Mon". */
+export function weekdayHint(choice: FollowUpChoice, pickedDate: Date): string | null {
+  if (choice === "none" || choice === "pick") return null
+  return followUpToDate(choice, pickedDate).toLocaleDateString("en-GB", {
+    weekday: "short",
+    timeZone: "UTC",
+  })
+}
 
 const DATE_RECT =
   "inline-flex h-8 items-center rounded-lg border border-[#e2e8f0] bg-white px-3 text-[13px] text-[#475569] transition-colors hover:bg-[#f8fafc] focus-visible:outline-none"
@@ -43,12 +53,14 @@ export function followUpToDate(
   choice: FollowUpChoice,
   pickedDate: Date,
 ): Date {
+  // "+N days" always means business days — a follow-up must never land on a
+  // weekend (SPEC §7).
   const today = appToday()
   switch (choice) {
     case "tomorrow":
-      return addCalendarDays(today, 1)
+      return addBusinessDays(today, 1)
     case "in3days":
-      return addCalendarDays(today, 3)
+      return addBusinessDays(today, 3)
     case "nextweek":
       return nextMonday()
     case "pick":
@@ -110,6 +122,7 @@ export function OutcomeFollowUpSection({
   onPickDate,
 }: Props) {
   const [pickOpen, setPickOpen] = useState(false)
+  const hint = (choice: FollowUpChoice) => weekdayHint(choice, pickedDate)
 
   return (
     <div className="flex flex-col gap-2">
@@ -160,11 +173,22 @@ export function OutcomeFollowUpSection({
               type="button"
               className={cn(
                 DATE_RECT,
+                "gap-1.5",
                 value === opt.value && DATE_RECT_SELECTED,
               )}
               onClick={() => onChange(opt.value)}
             >
               {opt.label}
+              {hint(opt.value) ? (
+                <span
+                  className={cn(
+                    "text-[11px] font-normal",
+                    value === opt.value ? "text-[#4f46e5]/70" : "text-[#94a3b8]",
+                  )}
+                >
+                  {hint(opt.value)}
+                </span>
+              ) : null}
             </button>
           ),
         )}

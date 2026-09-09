@@ -11,30 +11,32 @@ export async function importProspectsAction(
 ): Promise<ActionResult & { count?: number }> {
   try {
     if (!rows.length) return { ok: false, error: "Nothing to import" }
-    const created = await db.$transaction(
-      rows.map((r) =>
-        db.prospect.create({
-          data: {
-            firstName: r.firstName,
-            lastName: r.lastName || null,
-            company: r.company || null,
-            title: r.title || null,
-            email: r.email || null,
-            phone: r.phone || null,
-            linkedin: r.linkedin || null,
-            source: r.source || "csv-import",
-            timezone: r.timezone || null,
-            status: ProspectStatus.NEW,
-          },
-        }),
-      ),
-    )
-    await db.activity.createMany({
-      data: created.map((p) => ({
-        prospectId: p.id,
-        type: ActivityType.STATUS_CHANGE,
-        note: `CSV import “${p.source ?? "csv-import"}”`,
-      })),
+    // Two statements total (bulk INSERT … RETURNING, then bulk activity insert)
+    // instead of one INSERT per row.
+    const created = await db.$transaction(async (tx) => {
+      const prospects = await tx.prospect.createManyAndReturn({
+        data: rows.map((r) => ({
+          firstName: r.firstName,
+          lastName: r.lastName || null,
+          company: r.company || null,
+          title: r.title || null,
+          email: r.email || null,
+          phone: r.phone || null,
+          linkedin: r.linkedin || null,
+          source: r.source || "csv-import",
+          timezone: r.timezone || null,
+          status: ProspectStatus.NEW,
+        })),
+        select: { id: true, source: true },
+      })
+      await tx.activity.createMany({
+        data: prospects.map((p) => ({
+          prospectId: p.id,
+          type: ActivityType.STATUS_CHANGE,
+          note: `CSV import “${p.source ?? "csv-import"}”`,
+        })),
+      })
+      return prospects
     })
     revalidateProspects()
     return { ok: true, count: created.length }

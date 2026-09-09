@@ -2,9 +2,13 @@
 
 import { ProspectStatus } from "@prisma/client"
 import { db } from "@/lib/db"
+import { revalidatePath } from "next/cache"
 import { revalidateProspects } from "@/lib/revalidate"
 import { enrollProspect, stopEnrollment } from "@/lib/sequence-engine"
 import type { ActionResult } from "@/actions/prospects"
+
+/** Parallel enrollments per batch — stays well under the DB connection pool. */
+const ENROLL_CONCURRENCY = 4
 
 export async function enrollProspectsAction(input: {
   prospectIds: string[]
@@ -12,24 +16,35 @@ export async function enrollProspectsAction(input: {
   spreadDays: number
 }): Promise<ActionResult> {
   try {
-    const { prospectIds, sequenceId, spreadDays } = input
+    const { sequenceId, spreadDays } = input
+    // Dedupe so two concurrent enrollments can never race on one prospect.
+    const prospectIds = [...new Set(input.prospectIds)]
     if (!prospectIds.length) return { ok: false, error: "No prospects selected" }
     if (!sequenceId) return { ok: false, error: "Pick a sequence" }
     const days = Math.max(1, Math.min(30, Math.floor(spreadDays) || 1))
     let enrolled = 0
     let lastError = "Could not enroll any prospects"
-    for (let i = 0; i < prospectIds.length; i++) {
-      const delay = days <= 1 ? 0 : i % days
-      try {
-        await enrollProspect(prospectIds[i], sequenceId, {
-          delayBusinessDays: delay,
-        })
-        enrolled += 1
-      } catch (e) {
-        lastError = e instanceof Error ? e.message : "failed"
+    // Each enrollment is its own transaction on an independent prospect, so
+    // run a few at a time instead of strictly one after another.
+    for (let start = 0; start < prospectIds.length; start += ENROLL_CONCURRENCY) {
+      const chunk = prospectIds.slice(start, start + ENROLL_CONCURRENCY)
+      const results = await Promise.allSettled(
+        chunk.map((prospectId, offset) => {
+          const i = start + offset
+          const delay = days <= 1 ? 0 : i % days
+          return enrollProspect(prospectId, sequenceId, {
+            delayBusinessDays: delay,
+          })
+        }),
+      )
+      for (const r of results) {
+        if (r.status === "fulfilled") enrolled += 1
+        else lastError = r.reason instanceof Error ? r.reason.message : "failed"
       }
     }
     revalidateProspects()
+    revalidatePath(`/sequences/${sequenceId}`)
+    revalidatePath("/sequences/default")
     if (enrolled === 0) return { ok: false, error: lastError }
     return { ok: true }
   } catch (error) {

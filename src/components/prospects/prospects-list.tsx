@@ -15,6 +15,7 @@ type Props = {
   sources: string[]
   total: number
   totalUnfiltered: number
+  openId?: string
 }
 
 export function ProspectsList({
@@ -24,6 +25,7 @@ export function ProspectsList({
   sources,
   total,
   totalUnfiltered,
+  openId,
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [enrollOpen, setEnrollOpen] = useState(false)
@@ -66,6 +68,7 @@ export function ProspectsList({
           onSelectedChange={setSelected}
           onEnroll={enrollOne}
           totalUnfiltered={totalUnfiltered}
+          openId={openId}
         />
         {!(totalUnfiltered === 0 && rows.length === 0) && (
           <ProspectsPagination filters={filters} total={total} />

@@ -2,14 +2,20 @@
 
 import Link from "next/link"
 import { useLayoutEffect, useRef, useState } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { CallOutcome, StepType, TaskStatus } from "@prisma/client"
+import { toast } from "sonner"
 import { CopyContactButton } from "@/components/today/copy-contact-button"
 import { OutcomePill } from "@/components/today/outcome-pill"
 import { OutcomePopover } from "@/components/today/outcome-popover"
 import { SnoozeMenu } from "@/components/today/snooze-menu"
 import { TypeIcon } from "@/components/today/type-icon"
 import { contactForType, prospectDisplayName } from "@/components/today/labels"
+import { useIntentPrefetch } from "@/hooks/use-intent-prefetch"
+import { useFreshEnter } from "@/lib/fresh-enter"
 import type { TodayQueueItem } from "@/lib/queries"
+import { prospectPanelHref } from "@/lib/prospect-href"
+import { taskDisplayName } from "@/lib/task-label"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -59,7 +65,10 @@ function DoneCheck({ animate }: { animate?: boolean }) {
 }
 
 const ROW_GRID =
-  "grid grid-cols-[28px_minmax(0,1fr)_190px_130px_90px] items-center gap-3.5 px-4 py-3"
+  "grid grid-cols-[28px_minmax(0,1fr)_190px_130px_170px] items-center gap-3.5 px-4 py-3"
+
+const ROW_ACTION =
+  "text-[13px] text-[#64748b] hover:text-[#1e293b] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
 
 export function QueueRow({
   item,
@@ -77,10 +86,20 @@ export function QueueRow({
 }: Props) {
   const rowRef = useRef<HTMLDivElement>(null)
   const [exitPhase, setExitPhase] = useState<"idle" | "collapse">("idle")
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const isDone = done || item.status === TaskStatus.DONE
+  const entering = useFreshEnter(isDone ? item.completedAt : null)
   const name = prospectDisplayName(item.prospect)
   const contact = contactForType(item.type, item.prospect)
+  const isEmailTask =
+    item.type === StepType.EMAIL || item.type === StepType.EMAIL_REPLY
   const company = item.prospect.company
+  const prospectHref = prospectPanelHref(item.prospect.id, {
+    pathname,
+    search: searchParams,
+  })
+  const prefetchProspect = useIntentPrefetch(prospectHref)
 
   useLayoutEffect(() => {
     if (!exiting) {
@@ -114,9 +133,11 @@ export function QueueRow({
       ref={rowRef}
       role="row"
       data-queue-row
+      data-enter-row
       data-state={selected ? "selected" : undefined}
       data-exiting={exiting || undefined}
       data-exit-phase={exiting ? exitPhase : undefined}
+      data-entering={entering || undefined}
       className={cn(
         ROW_GRID,
         "cursor-pointer hover:bg-[#f8fafc] focus-within:bg-[#f8fafc]",
@@ -149,8 +170,10 @@ export function QueueRow({
           )}
         >
           <Link
-            href={`/prospects/${item.prospect.id}`}
+            href={prospectHref}
             className="hover:underline focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
+            onMouseEnter={prefetchProspect}
+            onFocus={prefetchProspect}
             onClick={(e) => e.stopPropagation()}
           >
             {name}
@@ -166,7 +189,7 @@ export function QueueRow({
           )}
         >
           <TypeIcon type={item.type} variant="inline" />
-          <span className="truncate">{item.label}</span>
+          <span className="truncate">{taskDisplayName(item.label)}</span>
         </div>
       </div>
 
@@ -212,32 +235,39 @@ export function QueueRow({
         <OutcomePill outcome={item.lastOutcome} />
       </div>
 
-      <div role="cell" className="text-right">
+      <div role="cell" className="flex items-center justify-end gap-3">
         {isDone ? (
           <span className="text-[13px] tabular-nums text-[#94a3b8]">
             {formatDoneTime(item.completedAt)}
           </span>
-        ) : item.type === StepType.EMAIL ||
-          item.type === StepType.EMAIL_REPLY ? (
-          <button
-            type="button"
-            disabled={!item.template || exiting}
-            className="text-[13px] text-[#64748b] hover:text-[#1e293b] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#4f46e5]/30 focus-visible:outline-none"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (item.template) void navigator.clipboard.writeText(item.template)
-            }}
-          >
-            Copy template
-          </button>
-        ) : showSnooze ? (
-          <SnoozeMenu
-            taskId={item.id}
-            open={snoozeOpen}
-            onOpenChange={onSnoozeOpenChange}
-            onSnooze={onSnooze}
-          />
-        ) : null}
+        ) : (
+          <>
+            {isEmailTask ? (
+              <button
+                type="button"
+                disabled={!item.template || exiting}
+                title={item.template ? undefined : "No template on this step"}
+                className={ROW_ACTION}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!item.template) return
+                  void navigator.clipboard.writeText(item.template)
+                  toast.success("Template copied")
+                }}
+              >
+                Copy template
+              </button>
+            ) : null}
+            {showSnooze ? (
+              <SnoozeMenu
+                taskId={item.id}
+                open={snoozeOpen}
+                onOpenChange={onSnoozeOpenChange}
+                onSnooze={onSnooze}
+              />
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   )

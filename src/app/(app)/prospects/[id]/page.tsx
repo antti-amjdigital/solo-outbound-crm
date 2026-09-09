@@ -1,6 +1,5 @@
-import { notFound } from "next/navigation"
-import { ProspectDetailView } from "@/components/prospect-detail/prospect-detail-view"
-import { getProspectDetail } from "@/lib/prospect-detail-query"
+import { redirect } from "next/navigation"
+import { prospectPanelRedirectHref } from "@/lib/prospect-href"
 
 export default async function ProspectDetailPage({
   params,
@@ -11,11 +10,5 @@ export default async function ProspectDetailPage({
 }) {
   const { id } = await params
   const raw = await searchParams
-  const data = await getProspectDetail(id, raw)
-  if (!data) notFound()
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ProspectDetailView data={data} />
-    </div>
-  )
+  redirect(prospectPanelRedirectHref(id, raw))
 }

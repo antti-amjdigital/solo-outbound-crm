@@ -1,18 +1,8 @@
-import {
-  ActivityType,
-  CallOutcome,
-  EnrollState,
-  StepType,
-} from "@prisma/client"
-import { db } from "@/lib/db"
+import { StepType } from "@prisma/client"
 import { notFound } from "next/navigation"
-
-export type StepStats = {
-  done: number
-  connects: number
-  replies: number
-  booked: number
-}
+import { cache } from "react"
+import { appToday, formatCalendarDate } from "@/lib/dates"
+import { db } from "@/lib/db"
 
 export type SequenceEditorData = {
   id: string
@@ -25,92 +15,41 @@ export type SequenceEditorData = {
     label: string
     delayDays: number
     template: string | null
-    stats: StepStats
   }[]
-  midSequenceCount: number
+  /** Enrollments in any state — the "N enrolled" figure in the header. */
   enrolledAllTime: number
-  runningCount: number
-  meetingsBooked: number
-  dialCount: number
+  /** YYYY-MM-DD in APP_TZ — keeps the header's calendar-day count stable across hydration. */
+  calendarToday: string
 }
 
-const CONNECT_OUTCOMES: CallOutcome[] = [
-  CallOutcome.CONNECTED,
-  CallOutcome.CALLBACK_REQUESTED,
-  CallOutcome.MEETING_BOOKED,
-  CallOutcome.NOT_INTERESTED,
-]
-
-export async function resolveSequenceId(idOrDefault: string): Promise<string | null> {
+/**
+ * Per-request memoised: the (app) layout and the sequence page both resolve
+ * the default sequence during the same render, so only one query is issued.
+ * Prefers an active sequence but falls back to a paused one so the nav rail
+ * still has somewhere to point when everything is paused.
+ */
+export const resolveSequenceId = cache(async function resolveSequenceId(
+  idOrDefault: string,
+): Promise<string | null> {
   if (idOrDefault !== "default") return idOrDefault
   const first = await db.sequence.findFirst({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
+    orderBy: [{ isActive: "desc" }, { name: "asc" }],
     select: { id: true },
   })
   return first?.id ?? null
-}
+})
 
 export async function getSequenceEditorData(
   id: string,
 ): Promise<SequenceEditorData> {
-  const sequence = await db.sequence.findUnique({
-    where: { id },
-    include: { steps: { orderBy: { order: "asc" } } },
-  })
+  const [sequence, enrolledAllTime] = await Promise.all([
+    db.sequence.findUnique({
+      where: { id },
+      include: { steps: { orderBy: { order: "asc" } } },
+    }),
+    db.enrollment.count({ where: { sequenceId: id } }),
+  ])
   if (!sequence) notFound()
-
-  const [midSequenceCount, enrolledAllTime, runningCount, meetingsBooked, dialCount, activities] =
-    await Promise.all([
-      db.enrollment.count({
-        where: { sequenceId: id, state: EnrollState.RUNNING },
-      }),
-      db.enrollment.count({ where: { sequenceId: id } }),
-      db.enrollment.count({
-        where: { sequenceId: id, state: EnrollState.RUNNING },
-      }),
-      db.activity.count({
-        where: {
-          sequenceId: id,
-          OR: [
-            { type: ActivityType.MEETING_BOOKED },
-            { outcome: CallOutcome.MEETING_BOOKED },
-          ],
-        },
-      }),
-      db.activity.count({
-        where: { sequenceId: id, type: ActivityType.CALL },
-      }),
-      db.activity.findMany({
-        where: { sequenceId: id, stepOrder: { not: null } },
-        select: { stepOrder: true, type: true, outcome: true },
-      }),
-    ])
-
-  const byOrder = new Map<number, StepStats>()
-  for (const step of sequence.steps) {
-    byOrder.set(step.order, { done: 0, connects: 0, replies: 0, booked: 0 })
-  }
-
-  for (const a of activities) {
-    if (a.stepOrder == null) continue
-    const bucket = byOrder.get(a.stepOrder)
-    if (!bucket) continue
-    bucket.done += 1
-    if (a.outcome && CONNECT_OUTCOMES.includes(a.outcome)) bucket.connects += 1
-    if (
-      a.type === ActivityType.EMAIL_REPLY_RECEIVED ||
-      a.type === ActivityType.EMAIL_REPLY_SENT
-    ) {
-      bucket.replies += 1
-    }
-    if (
-      a.type === ActivityType.MEETING_BOOKED ||
-      a.outcome === CallOutcome.MEETING_BOOKED
-    ) {
-      bucket.booked += 1
-    }
-  }
 
   return {
     id: sequence.id,
@@ -123,17 +62,8 @@ export async function getSequenceEditorData(
       label: s.label,
       delayDays: s.delayDays,
       template: s.template,
-      stats: byOrder.get(s.order) ?? {
-        done: 0,
-        connects: 0,
-        replies: 0,
-        booked: 0,
-      },
     })),
-    midSequenceCount,
     enrolledAllTime,
-    runningCount,
-    meetingsBooked,
-    dialCount,
+    calendarToday: formatCalendarDate(appToday()),
   }
 }

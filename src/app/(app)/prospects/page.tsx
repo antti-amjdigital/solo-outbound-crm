@@ -1,7 +1,9 @@
 import { Suspense } from "react"
 import { GlobalSearch } from "@/components/global-search/global-search"
+import { ProspectPanelSlot } from "@/components/prospect-detail/prospect-panel-slot"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProspectsList } from "@/components/prospects/prospects-list"
+import { parseProspectPanelId } from "@/lib/prospect-href"
 import { getProspectList } from "@/lib/prospect-queries"
 
 export const runtime = "nodejs"
@@ -12,6 +14,7 @@ export default async function ProspectsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const raw = await searchParams
+  const panelId = parseProspectPanelId(raw)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-stats-canvas">
@@ -33,10 +36,14 @@ export default async function ProspectsPage({
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 px-4 py-6 sm:px-0">
           <Suspense fallback={<ListSkeleton />}>
-            <ProspectsBody raw={raw} />
+            <ProspectsBody raw={raw} openId={panelId} />
           </Suspense>
         </div>
       </div>
+
+      <Suspense fallback={<ProspectPanelFallback />}>
+        <ProspectPanelSlot raw={raw} />
+      </Suspense>
     </div>
   )
 }
@@ -60,8 +67,10 @@ async function HeaderCount({
 
 async function ProspectsBody({
   raw,
+  openId,
 }: {
   raw: Record<string, string | string[] | undefined>
+  openId?: string
 }) {
   const data = await getProspectList(raw)
 
@@ -73,7 +82,28 @@ async function ProspectsBody({
       sources={data.sources}
       total={data.total}
       totalUnfiltered={data.totalUnfiltered}
+      openId={openId}
     />
+  )
+}
+
+function ProspectPanelFallback() {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/20"
+      aria-busy
+      aria-label="Loading prospect"
+    >
+      <div className="absolute inset-y-0 right-0 flex h-dvh w-full max-w-[min(1100px,calc(100vw-2.5rem))] flex-col bg-white shadow-[-8px_0_40px_rgba(15,23,42,0.12)]">
+        <div className="border-b border-[#e8edf4] px-8 py-4">
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <div className="flex flex-1 gap-6 p-8">
+          <Skeleton className="h-64 w-[330px] shrink-0 rounded-xl" />
+          <Skeleton className="h-full min-w-0 flex-1 rounded-xl" />
+        </div>
+      </div>
+    </div>
   )
 }
 

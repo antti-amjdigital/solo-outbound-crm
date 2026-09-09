@@ -14,8 +14,8 @@ import {
   type FollowUpChoice,
 } from "@/components/today/outcome-follow-up-section"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { appToday } from "@/lib/dates"
-import { addCalendarDays } from "@/lib/queue-filters"
+import { addBusinessDays, appToday } from "@/lib/dates"
+import { useModEnterSubmit } from "@/hooks/use-mod-enter"
 import { cn } from "@/lib/utils"
 
 const OUTCOME_BY_KBD = Object.fromEntries(
@@ -52,7 +52,7 @@ export function OutcomePopover({
   const [followUp, setFollowUp] = useState<FollowUpChoice | null>(null)
   const [followUpManual, setFollowUpManual] = useState(false)
   const [pickedDate, setPickedDate] = useState(() =>
-    addCalendarDays(appToday(), 3),
+    addBusinessDays(appToday(), 3),
   )
 
   const isCall = taskType === StepType.CALL
@@ -64,7 +64,7 @@ export function OutcomePopover({
     setNoteExpanded(false)
     setFollowUp(null)
     setFollowUpManual(false)
-    setPickedDate(addCalendarDays(appToday(), 3))
+    setPickedDate(addBusinessDays(appToday(), 3))
   }
 
   function selectOutcome(next: CallOutcome) {
@@ -90,6 +90,8 @@ export function OutcomePopover({
     reset()
     onOpenChange(false)
   }
+
+  useModEnterSubmit(save, open)
 
   function handleOpenChange(next: boolean) {
     if (!next) {

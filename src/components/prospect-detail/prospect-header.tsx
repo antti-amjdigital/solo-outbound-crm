@@ -37,6 +37,7 @@ import {
   setProspectStatusAction,
   theyRepliedAction,
 } from "@/actions/prospects"
+import { useModEnterSubmit } from "@/hooks/use-mod-enter"
 import {
   REMOVE_FROM_SEQUENCE_LABEL,
   STATUS_LABEL,
@@ -97,6 +98,24 @@ export function ProspectHeader({
   }
 
   const enrolled = enrollment != null
+
+  function enroll() {
+    if (pending || !sequenceId) return
+    start(async () => {
+      const res = await enrollProspectsAction({
+        prospectIds: [prospect.id],
+        sequenceId,
+        spreadDays: 1,
+      })
+      if (!res.ok) toast.error(res.error)
+      else {
+        onEnrollOpenChange(false)
+        refresh("Enrolled")
+      }
+    })
+  }
+
+  useModEnterSubmit(enroll, enrollOpen)
 
   return (
     <>
@@ -256,20 +275,7 @@ export function ProspectHeader({
             </Button>
             <Button
               disabled={pending || !sequenceId}
-              onClick={() =>
-                start(async () => {
-                  const res = await enrollProspectsAction({
-                    prospectIds: [prospect.id],
-                    sequenceId,
-                    spreadDays: 1,
-                  })
-                  if (!res.ok) toast.error(res.error)
-                  else {
-                    onEnrollOpenChange(false)
-                    refresh("Enrolled")
-                  }
-                })
-              }
+              onClick={enroll}
             >
               Enroll
             </Button>

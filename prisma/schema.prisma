@@ -157,6 +157,11 @@ model Note {
   prospectId String
   prospect   Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   body       String
+  // The one durable "profile" note shown above the timeline. At most one per
+  // prospect; enforced in the note actions.
+  pinned     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([prospectId, pinned])
 }

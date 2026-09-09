@@ -1,6 +1,6 @@
 "use client"
 
-import { CallOutcome, StepType } from "@prisma/client"
+import { CallOutcome } from "@prisma/client"
 import { QueueRow } from "@/components/today/queue-row"
 import type { TodayQueueItem } from "@/lib/queries"
 
@@ -55,9 +55,7 @@ export function QueueTaskRow({
       }}
       onComplete={complete}
       onSnooze={snooze}
-      showSnooze={
-        item.type !== StepType.EMAIL && item.type !== StepType.EMAIL_REPLY
-      }
+      showSnooze
     />
   )
 }
